@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import argparse
 import json as json
+import subprocess
 
 def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, args):
 
@@ -45,8 +46,11 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
         start_point_lon_lat = start_points_arr[k]
         end_point_lon_lat = end_points_arr[k]
 
+        output_subfolder = os.path.join(output_path,slab_id + '_profile_{}'.format(label))
+        os.makedirs(output_subfolder, exist_ok=True)
+
         geo_filename = slab_id + '_profile_{}.geo'.format(label)
-        geo_filename = os.path.join(output_path, geo_filename)
+        geo_filename = os.path.join(output_subfolder, geo_filename)
 
         profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,plot_verbose=False)
         
@@ -56,6 +60,29 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
         
         profiles.append(profile)
         profiles_lat_lon_arr.append(profile_lat_lon)
+
+        if args.write_msh:
+          command = ["gmsh", "-2", geo_filename, "-format", "msh2"]
+          subprocess.run(command)
+
+          viz_subfolder = os.path.join(output_subfolder,"viz")
+          os.makedirs(viz_subfolder,exist_ok=True)
+          command = ["gmsh", "-2", geo_filename, "-format", "msh2", "-o", \
+                     os.path.join(viz_subfolder,slab_id + '_profile_{}_viz.msh'.format(label))]
+          subprocess.run(command)
+
+          command = ["gmsh", "-refine", os.path.join(viz_subfolder,slab_id + '_profile_{}_viz.msh'.format(label))]
+          subprocess.run(command)
+
+          command = ["gmsh", "-2", geo_filename, "-format", "msh4", "-o", \
+                     os.path.join(viz_subfolder,slab_id + '_profile_{}_viz_v4_ascii.msh'.format(label))]
+          subprocess.run(command)
+
+          command = ["gmsh", "-refine", os.path.join(viz_subfolder,slab_id + '_profile_{}_viz_v4_ascii.msh'.format(label))]
+          subprocess.run(command)
+
+
+
 
     fig_name = slab_id + '_slices.pdf'
     fig_name = os.path.join(output_path, fig_name)
@@ -239,7 +266,8 @@ if __name__ == '__main__':
     parser.add_argument('--profile', type=str, required=True, help="CSV file defining the profiles")
     parser.add_argument('--slab_name', type=str, required=True, help="Textual identifier you want to associate with the output generated")
     parser.add_argument('--output_path', type=str, default='./', required=False, help="Path where generated output will be written")
-    
+    parser.add_argument('--write_msh', type=bool, default=True, required=False, help="Bool for whether or not to write .msh file.")
+
     # These options may also be readily parsed from an input file if
     # the command line argument approach becomes unmanageable.
     parse_geo_info(parser)
@@ -253,5 +281,7 @@ if __name__ == '__main__':
     # fname_slab = "data/Slab2/ker_slab2_dep_02.24.18.xyz"
     # fname_slab = "data/Slab2/ryu_slab2_dep_02.26.18.xyz"
     
+    os.makedirs(args.output_path, exist_ok=True)
+
     slice_generic(args.profile, fname_slab, args.data_path, args.output_path, args.slab_name, args)
 
