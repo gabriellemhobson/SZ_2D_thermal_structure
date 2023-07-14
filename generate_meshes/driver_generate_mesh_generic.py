@@ -165,8 +165,6 @@ def parse_beginning_strings(p):
   p.add_argument('--z_in_out',        type=float, default = 150.0, required=False, help="Depth (km) of inflow/outflow transition on wedge side")
   p.add_argument('--h_fine',          type=float, default = 0.5, required=False, help="Default value for fine resolution (km)")
   p.add_argument('--h_med',           type=float, default = 8.0, required=False, help="Default value for medium resolution (km)")
-  p.add_argument('--h_coarse',        type=float, default = 10.0, required=False, help="Default value for corse resolution (km)")
-
 
 def generate_input_options(a):
   
@@ -186,8 +184,6 @@ def generate_input_options(a):
       'h_fine = DefineNumber[ {}, Name "Parameters/h_fine" ];'.format(a.h_fine) )
   beginning_strings.append(
       'h_med = DefineNumber[ {}, Name "Parameters/h_med" ];'.format(a.h_med) )
-  beginning_strings.append(
-      'h_coarse = DefineNumber[ {}, Name "Parameters/h_coarse" ];'.format(a.h_coarse) )
    
   geo_info = dict()
   geo_info['beginning_strings'] = beginning_strings

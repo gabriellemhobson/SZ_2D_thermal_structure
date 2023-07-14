@@ -1,6 +1,6 @@
 # SZ_2D_thermal_structure
 
-This code was developed by Gabrielle Hobson and Dave May and is distributed under the "LICENSE". It is part of the Megathrust Modeling Framework ([MTMOD](https://sites.utexas.edu/mtmod/), supported by NSF FRES grant EAR-2121568. 
+This code was developed by Gabrielle Hobson and Dave May and is distributed under the "LICENSE". It is part of the Megathrust Modeling Framework ([MTMOD](https://sites.utexas.edu/mtmod/)), supported by NSF FRES grant EAR-2121568. 
 
 ### Install and environment 
 
@@ -17,4 +17,12 @@ This will create a conda environment named `NAME HERE`. This code requires FEniC
 `conda install -c conda-forge fenics`
 
 This code has been tested for compatibility with PETSc versions 3.12, 3.14 and 3.17. There are differences between these versions that are handled in the code. Other versions of PETSc have not been tested and may not be compatible. 
+
+This code also depends on [ParametricModelUtils], a "tool for defining and running parametric computational models". It should be added to the `SZ_2D_thermal_structure` directory. 
+
+`git clone https://github.com/hpc4geo/ParametricModelUtils` 
+
+### Generating meshes
+
+### Parameter handling
 
