@@ -1,0 +1,15 @@
+name: SZ_2D_thermal_structure
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - matplotlib=3.5.1
+  - meshio=5.3.4
+  - numpy=1.24.2
+  - pandas=1.4.3
+  - pip=23.0.1
+  - python=3.8.3
+  - scipy=1.9.3
+  - pip:
+    - gmshparser==0.2.0
+  - petsc=3.17
