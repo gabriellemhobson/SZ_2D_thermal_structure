@@ -18,9 +18,18 @@ This will create a conda environment named `SZ_2D_thermal_structure`. This code 
 
 This code has been tested for compatibility with PETSc versions 3.12, 3.14 and 3.17. There are differences between these versions that are handled in the code. Other versions of PETSc have not been tested and may not be compatible. 
 
-This code also depends on [ParametricModelUtils], a "tool for defining and running parametric computational models". It should be added to the `SZ_2D_thermal_structure` directory. 
+This code also depends on [ParametricModelUtils](https://github.com/hpc4geo/ParametricModelUtils), a "tool for defining and running parametric computational models". It should be added to the `SZ_2D_thermal_structure` directory. 
 
 `git clone https://github.com/hpc4geo/ParametricModelUtils` 
+
+Finally, the mesh generation process requires the freely available software [GMSH](https://gmsh.info/), version 4.10. Make sure that you can run gmsh commands on the command line - this may require adding the GMSH app to your PATH variable like so: 
+
+`export PATH=:$PATH:/path/to/Gmsh.app`
+
+You can check that GMSH commands work on the command line by entering this line, for example. 
+
+`gmsh --info`
+
 
 ### Generating meshes
 
