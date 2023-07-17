@@ -12,7 +12,7 @@ Once you have navigated to the main directory `SZ_2D_thermal_structure`, use the
 
 `conda env create -f environment.yml`
 
-This will create a conda environment named `NAME HERE`. This code requires FEniCS 2019.1.0 which can be added to the environment like so:
+This will create a conda environment named `SZ_2D_thermal_structure`. This code requires FEniCS 2019.1.0 which can be added to the environment like so:
 
 `conda install -c conda-forge fenics`
 
