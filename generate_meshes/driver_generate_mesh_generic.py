@@ -31,7 +31,7 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
     with open(os.path.join(output_path, "config.json"), "w") as fp:
       json.dump(record, fp, indent=2)
 
-    df = pd.read_csv(profile_fname)
+    df = pd.read_csv(profile_fname,comment="#")
 
     labels = list(df["Label"])
     start_points_arr = [[df["lon_start"][k],df["lat_start"][k]] for k in range(len(df))]
@@ -50,9 +50,8 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
         os.makedirs(output_subfolder, exist_ok=True)
 
         geo_filename = slab_id + '_profile_{}.geo'.format(label)
-        geo_filename = os.path.join(output_subfolder, geo_filename)
-
-        profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,plot_verbose=False)
+        
+        profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,plot_verbose=False,write_msh=args.write_msh)
         
         fname_profile = slab_id + '_profile_{}.xy'.format(label) # Avoid using `z` as last character otherwise numpy will zip the file
         fname_profile = os.path.join(output_path, fname_profile)
@@ -61,28 +60,16 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
         profiles.append(profile)
         profiles_lat_lon_arr.append(profile_lat_lon)
 
-        if args.write_msh:
-          command = ["gmsh", "-2", geo_filename, "-format", "msh2"]
-          subprocess.run(command)
+        command = ["gmsh", geo_filename, "-parse_and_exit"]
+        subprocess.run(command)
 
-          viz_subfolder = os.path.join(output_subfolder,"viz")
-          os.makedirs(viz_subfolder,exist_ok=True)
-          command = ["gmsh", "-2", geo_filename, "-format", "msh2", "-o", \
-                     os.path.join(viz_subfolder,slab_id + '_profile_{}_viz.msh'.format(label))]
-          subprocess.run(command)
-
-          command = ["gmsh", "-refine", os.path.join(viz_subfolder,slab_id + '_profile_{}_viz.msh'.format(label))]
-          subprocess.run(command)
-
-          command = ["gmsh", "-2", geo_filename, "-format", "msh4", "-o", \
-                     os.path.join(viz_subfolder,slab_id + '_profile_{}_viz_v4_ascii.msh'.format(label))]
-          subprocess.run(command)
-
-          command = ["gmsh", "-refine", os.path.join(viz_subfolder,slab_id + '_profile_{}_viz_v4_ascii.msh'.format(label))]
-          subprocess.run(command)
-
-
-
+        # move files to appropriate subdirectories
+        os.rename(geo_filename, os.path.join(output_subfolder, geo_filename))
+        os.rename(geo_filename[:-4]+'.msh', os.path.join(output_subfolder, geo_filename[:-4]+'.msh'))
+        viz_subfolder = os.path.join(output_subfolder,"viz")
+        os.makedirs(viz_subfolder,exist_ok=True)
+        os.rename(geo_filename[:-4]+'_viz.msh', os.path.join(viz_subfolder, geo_filename[:-4]+'_viz.msh'))
+        os.rename(geo_filename[:-4]+'_viz_v4_ascii.msh', os.path.join(viz_subfolder, geo_filename[:-4]+'_viz_v4_ascii.msh'))
 
     fig_name = slab_id + '_slices.pdf'
     fig_name = os.path.join(output_path, fig_name)
@@ -199,7 +186,7 @@ def generate_input_options(a):
 
 
 def determine_slab_data(profiles, data_path):
-  df = pd.read_csv(profiles)
+  df = pd.read_csv(profiles, comment="#")
   lat_s = np.array(df["lat_start"])
   lat_e = np.array(df["lat_end"])
   lon_s = np.array(df["lon_start"])

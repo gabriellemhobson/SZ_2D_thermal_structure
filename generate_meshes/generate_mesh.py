@@ -266,7 +266,7 @@ class Generate_Mesh:
             profile[:,0] *= -1
         return profile
 
-    def write_slice_to_geo(self,profile,h,N,filename,geo_info):
+    def write_slice_to_geo(self,profile,h,N,filename,geo_info,write_msh):
         print('profile',np.shape(profile))
         print('Writing to file: ',filename)
 
@@ -345,6 +345,15 @@ class Generate_Mesh:
             f.write('MeshSize' + str({*np.arange(0,np.shape(profile)[0])}) + ' = h_fine;'); f.write('\n')
             f.write('MeshSize{' + str(np.shape(profile)[0]+1) + ', ' + str(np.shape(profile)[0]+2) + '} = h_med;'); f.write('\n')
 
+            if write_msh:
+                f.write('Mesh 2;'); f.write('\n')
+                f.write('Mesh.MshFileVersion = 2;'); f.write('\n')
+                f.write('Save "'+ filename[:-4]+'.msh' +'";'); f.write('\n')
+                f.write('RefineMesh;'); f.write('\n')
+                f.write('Save "'+filename[:-4]+'_viz.msh'+'";'); f.write('\n')
+                f.write('Mesh.MshFileVersion = 4.1;'); f.write('\n')
+                f.write('Save "'+filename[:-4]+'_viz_v4_ascii.msh'+'";'); f.write('\n')
+
             f.close()
             return 
 
@@ -404,7 +413,7 @@ class Generate_Mesh:
         print('dimension', xy.shape)
         return boundaries, xy
 
-    def run_generate_mesh(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,plot_verbose=False):
+    def run_generate_mesh(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,plot_verbose=False,write_msh=True):
 
         start_point = self.normalize_point(self.af,start_point_latlon)
         # end_point_xy = trench_normal(point,scaling,trench_xy)
@@ -434,7 +443,7 @@ class Generate_Mesh:
         profile_flipped = self.flip_profile_lr(profile_smooth)
         self.plot_profile(profile_flipped,'Final profile')
         
-        self.write_slice_to_geo(profile_flipped,h_smooth,N,geo_filename,geo_info)
+        self.write_slice_to_geo(profile_flipped,h_smooth,N,geo_filename,geo_info,write_msh=write_msh)
 
         if plot_verbose==True:
 
