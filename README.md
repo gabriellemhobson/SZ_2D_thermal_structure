@@ -66,7 +66,7 @@ Running forward models is handled by `schedule_script.py`. The user passes in in
 
 In general usage, `forward_model.py` does not need to be edited or run. It is just called by `schedule_script.py`. 
 
-*Input arguments for `schedule_script.py`:
+**Input arguments for `schedule_script.py`:**
 
 Required arguments:
 
@@ -82,8 +82,19 @@ Required arguments:
 | --jobs_csv       | str  | Name of csv file to tracks jobs run.                        | |
 | --viscosity_type | str  | Type of viscosity flow law                                  | 'isoviscous', 'diffcreep', 'disccreep', or 'mixed' |
 
+Optional arguments:
+
+| Argument name    | type | Description                                                 | Default |
+| ---------------- | ---- | ---                                                         | --- |
+| --tol  | float | Residuals for pde solutions in forward model solve must be below this tolerance. | 1e-5|
+| --n_picard_it | int | Maximum number of picard iterations. | 10 |
+| --n_iters | int | Maximum number of iterations. | 10 | 
+| --diff_tol | float | Tolerance for reaching a converged solution. | 1e-1 |
+| --T_CG_order | int | Order of CG elements for temperature. | 2 | 
+
 
 ! Last edited thing in forward_model.py is which solver to call
+
 ! Max number of jobs should be number of cores
 
 ### Post-processing and plotting
