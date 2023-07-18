@@ -246,7 +246,7 @@ if __name__ == '__main__':
     args = CMDA()
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', type=str, default="data/", required=False, help="Path where Slab2/ is located")
-    parser.add_argument('--profile', type=str, required=True, help="CSV file defining the profiles")
+    parser.add_argument('--profile_csv', type=str, required=True, help="CSV file defining the profiles")
     parser.add_argument('--slab_name', type=str, required=True, help="Textual identifier you want to associate with the output generated")
     parser.add_argument('--output_path', type=str, default='./', required=False, help="Path where generated output will be written")
     parser.add_argument('--write_msh', type=bool, default=True, required=False, help="Bool for whether or not to write .msh file.")
@@ -259,12 +259,12 @@ if __name__ == '__main__':
     
     parser.parse_known_args(namespace=args)
     
-    fname_slab = determine_slab_data(args.profile, args.data_path)
+    fname_slab = determine_slab_data(args.profile_csv, args.data_path)
     # fname_slab = "data/Slab2/cas_slab2_dep_02.24.18.xyz"
     # fname_slab = "data/Slab2/ker_slab2_dep_02.24.18.xyz"
     # fname_slab = "data/Slab2/ryu_slab2_dep_02.26.18.xyz"
     
     os.makedirs(args.output_path, exist_ok=True)
 
-    slice_generic(args.profile, fname_slab, args.data_path, args.output_path, args.slab_name, args)
+    slice_generic(args.profile_csv, fname_slab, args.data_path, args.output_path, args.slab_name, args)
 

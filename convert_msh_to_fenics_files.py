@@ -9,13 +9,20 @@ This transfer matrix is written to file for later use.
 from utils import process_mesh
 import os
 import subprocess
+import argparse
 
-mesh_dir = 'generate_meshes/output/cascadia_profile_A'
-profile_name = 'cascadia_profile_A'
+class CMDA: # cmdline_args
+    pass
 
-v4_vizfile_name = os.path.join(mesh_dir,os.path.join('viz', profile_name+'_viz_v4_ascii.msh'))
-meshfile_name = os.path.join(mesh_dir,profile_name)
-vizfile_name = os.path.join(mesh_dir,os.path.join('viz', profile_name+'_viz'))
+args = CMDA()
+parser = argparse.ArgumentParser()
+parser.add_argument('--mesh_dir', type=str, required=True, help="Path where mesh files are stored.")
+parser.add_argument('--profile_name', type=str, required=True, help="Name of specific profile to convert")
+
+
+v4_vizfile_name = os.path.join(args.mesh_dir,os.path.join('viz', args.profile_name+'_viz_v4_ascii.msh'))
+meshfile_name = os.path.join(args.mesh_dir,args.profile_name)
+vizfile_name = os.path.join(args.mesh_dir,os.path.join('viz', args.profile_name+'_viz'))
 T_CG_order = 2
 
 command = ["dolfin-convert", meshfile_name+".msh", meshfile_name+".xml"]
@@ -25,12 +32,12 @@ command = ["dolfin-convert", vizfile_name+".msh", vizfile_name+".xml"]
 subprocess.run(command)
 
 # get the tags associated with the slab interface
-pm = process_mesh.Process_Mesh(T_CG_order,meshfile_name,vizfile_name,v4_vizfile_name,mesh_dir)
+pm = process_mesh.Process_Mesh(T_CG_order,meshfile_name,vizfile_name,v4_vizfile_name,args.mesh_dir)
 # Write to file 
 X,Y,TAGS = pm.get_slab_interface_tags()
 
 # write the transfer matrix that goes from a CG 4 FunctionSpace defined on the mesh to a CG 1 FunctionSpace defined on the viz mesh
-matrix_filename = os.path.join(mesh_dir, "M.dat")
+matrix_filename = os.path.join(args.mesh_dir, "M.dat")
 pm.write_transfer_matrix(matrix_filename)
 
 # write the x y coord and cell data to file for later plotting

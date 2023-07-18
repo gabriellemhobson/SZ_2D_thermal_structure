@@ -33,12 +33,11 @@ def load_fields(path_list,data_fname):
 
 args = CMDA()
 parser = argparse.ArgumentParser()
-parser.add_argument('--input_csv', type=str, default="jobs_log.csv", required=True, help="Name of csv file containing paths to input data.")
+parser.add_argument('--jobs_csv', type=str, default="jobs_log.csv", required=True, help="Name of csv file containing paths to input data.")
 parser.add_argument('--data_fname', type=str, default='temperature.pkl', required=False, help="The name of the datafile to be loaded from each directory.")
 parser.add_argument('--mesh_path', type=str, default='input', required=True, help="Path where mesh files are located.")
-parser.add_argument('--profile', type=str, default=None, required=True, help="Which profile to use.")
+parser.add_argument('--profile_name', type=str, default=None, required=True, help="Which profile to use.")
 parser.add_argument('--reorder', type=bool, default=True, required=False, help="Whether or not to reorder the fields.")
-# parser.add_argument('--n_inputs', type=int, default='1', required=True, help="Dimension of input param (should match M.P.n_inputs).")
 parser.add_argument('--output_path', type=str, default='./', required=False, help="Path where generated output will be written.")
 parser.add_argument('--include', type=str, nargs='+', required=True, help="Which sampling methods to include.")
 parser.add_argument('--pre_dir', type=str, default='./', required=False, help="Path to handle absolute vs relative data paths in logs.")
@@ -51,7 +50,7 @@ else:
     os.makedirs(args.output_path, exist_ok=True)
     print('Output path', args.output_path, 'created')
 
-jobs_log = pd.read_csv(args.input_csv,comment='#')
+jobs_log = pd.read_csv(args.jobs_csv,comment='#')
 for j in range(len(jobs_log)): # if necessary, join to get the absolute path
     jobs_log.loc[j,"path"] = os.path.join(args.pre_dir,jobs_log.loc[j,"path"])
 
@@ -68,9 +67,9 @@ coords_x = lw.load(os.path.join(args.mesh_path,"coords_x.pkl"))
 coords_y = lw.load(os.path.join(args.mesh_path,"coords_y.pkl"))
 mesh_cells = lw.load(os.path.join(args.mesh_path,"mesh_cells.pkl"))
 
-v4_vizfile_name = os.path.join(args.mesh_path,os.path.join("viz",args.profile+"_viz_v4_ascii.msh"))
-meshfile_name = os.path.join(args.mesh_path,args.profile)
-vizfile_name = os.path.join(args.mesh_path,os.path.join("viz",args.profile+"_viz"))
+v4_vizfile_name = os.path.join(args.mesh_path,os.path.join("viz",args.profile_name+"_viz_v4_ascii.msh"))
+meshfile_name = os.path.join(args.mesh_path,args.profile_name)
+vizfile_name = os.path.join(args.mesh_path,os.path.join("viz",args.profile_name+"_viz"))
 T_CG_order = 2
 
 M = lw.load_transfer_matrix(os.path.join(args.mesh_path,"M.dat"))
