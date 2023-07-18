@@ -1,8 +1,8 @@
-# SZ_2D_thermal_structure
+# SZ_2D_thermal_structure 
 
 This code was developed by Gabrielle Hobson and Dave May and is distributed under the "LICENSE". It is part of the Megathrust Modeling Framework ([MTMOD](https://sites.utexas.edu/mtmod/)), supported by NSF FRES grant EAR-2121568. 
 
-### Install and environment 
+## Install and environment 
 
 Starting from the command line, this github repository can be cloned like so: 
 
@@ -14,7 +14,10 @@ Once you have navigated to the main directory `SZ_2D_thermal_structure`, use the
 
 This will create a conda environment named `SZ_2D_thermal_structure`. This code requires FEniCS 2019.1.0 which can be added to the environment like so:
 
-`conda install -c conda-forge fenics`
+```
+conda activate SZ_2D_thermal_structure
+conda install -c conda-forge fenics
+```
 
 This code has been tested for compatibility with PETSc versions 3.12, 3.14 and 3.17. There are differences between these versions that are handled in the code. Other versions of PETSc have not been tested and may not be compatible. 
 
@@ -30,8 +33,84 @@ You can check that GMSH commands work on the command line by entering this line,
 
 `gmsh --info`
 
+## Setup 
+
+- setup.sh 
+
+## Usage
 
 ### Generating meshes
 
+The code driver_generate_mesh_generic.py takes as input:
+
+And performs the following steps
+- Takes a profile from Slab 2.0 data given certain start and end points, in latitude and longitude coordinates.
+- Creates a .geo file with the geometry based on that profile.
+- Meshes the .geo file to create a .msh file with the computational mesh.
+- 
+
 ### Parameter handling
 
+The file `define_parameters.py` creates a class with the base case values for the parameters stored as attributes. An instance of this class is passed to the forward model solver. It handles the required nondimensionalization and also contains the function `set_param` which is used to update or set existing parameter attributes while handling the nondimensionalization. 
+
+The user should decide which parameters they wish to vary when running the forward model and set the ranges in the file `input_param.csv`. The file is space-delimited and should contain the parameter name, the min value, the max value, and the units. For example, to vary the slab velocity between 4.0 and 5.0 cm/yr, the `input_param.csv` file should look like this:
+
+```
+# parameter name, min value, max value, unit
+slab_vel 4.0 5.0 cm/yr
+```
+
+### Running forward models
+
+Running forward models is handled by `schedule_script.py`. The user passes in input arguments, which are specified below. The code in `schedule_script.py` creates an instance of the class contained in `forward_model.py`, given the input arguments. This class uses `ParametricModelUtils` so that forward models are batched, run, and their statuses tracked. 
+
+In general usage, `forward_model.py` does not need to be edited or run. It is just called by `schedule_script.py`. 
+
+*Input arguments for `schedule_script.py`:
+Required arguments:
+| Argument name    | type | Description                                                 | Options                     |
+| --profile_name   | str  | Which slice to use                                          |                             |
+| --mesh_dir       | str  | Path to directory with mesh                                 |                             |
+| --output_path    | str  | Output directory                                            |                             | 
+| --sample_method  | str  | Which method to use to sample parameter space.              | 'halton' or 'latinhypercube'|
+| --n1             | int  | Number of samples to draw initially to advance the sequence | |
+| --n2             | int  | Number of forward models to run                             | |
+| --seed           | int  | Seed for the sequence of samples drawn from parameter space | |
+| --jobs_csv       | str  | Name of csv file to tracks jobs run.                        | |
+| --viscosity_type | str  | Type of viscosity flow law                                  | 'isoviscous', 'diffcreep', 'disccreep', or 'mixed' |
+
+
+! Last edited thing in forward_model.py is which solver to call
+! Max number of jobs should be number of cores
+
+### Post-processing and plotting
+
+### Start-to-finish usage
+
+- Activate the conda environment 
+    `conda activate SZ_2D_thermal_structure`
+- Check the repo is up to date and paths are correct
+    `source setup.sh`
+- Enter the generate_mesh subdirectory 
+    `cd generate_meshes`
+- Check that the slab profile info in the csv input file is correct. 
+- Generate the geometry and mesh files:
+    `python3 driver_generate_mesh_generic.py --profile_csv "cascadia_start_end_points.csv" --slab_name "cascadia" --corner_depth -35.0 --output_path "output"`
+- Create the required mesh files for fenics usage and post-processing steps. 
+    `cd ..`
+    `python3 convert_msh_to_fenics_files.py --mesh_dir 'generate_meshes/output/cascadia_profile_B' --profile_name 'cascadia_profile_B' `
+- Check the `forward_model.py` script contains the correct info, paying special attention to the type of viscosity flow law, which forward model solver is used, and the number of iterations. 
+- Set the desired ranges of input parameters in `input_param.csv`. 
+- Set the forward model running. 
+    `python3 schedule_script.py --profile_name "cascadia_profile_B" --mesh_dir "generate_meshes/output/cascadia_profile_B" --output_path "output/cascadia_profile_B/example" --sample_method "halton" --n1 1 --n2 1 --seed 92014 --jobs_csv "cascadia_profile_B_example_log.csv"`
+- Once the forward model is done, perform the post-processing steps to create plots and compute isotherm-slab interface intersection locations. 
+    `python3 post_process.py --jobs_csv "cascadia_profile_B_example_log.csv" --mesh_path "generate_meshes/output/cascadia_profile_B" --profile_name "cascadia_profile_B" --include "halton"`
+- Look at your plots and be proud that you've run this code!
+
+## Exercises
+
+### Exercise #1
+
+### Exercise #2
+
+### Exercise #3
