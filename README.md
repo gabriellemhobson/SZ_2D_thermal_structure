@@ -67,11 +67,14 @@ Running forward models is handled by `schedule_script.py`. The user passes in in
 In general usage, `forward_model.py` does not need to be edited or run. It is just called by `schedule_script.py`. 
 
 *Input arguments for `schedule_script.py`:
+
 Required arguments:
-| Argument name    | type | Description                                                 | Options                     |
-| --profile_name   | str  | Which slice to use                                          |                             |
-| --mesh_dir       | str  | Path to directory with mesh                                 |                             |
-| --output_path    | str  | Output directory                                            |                             | 
+
+| Argument name    | type | Description                                                 | Options |
+| ---------------- | ---- | ---                                                         | --- |
+| --profile_name   | str  | Which slice to use                                          | |
+| --mesh_dir       | str  | Path to directory with mesh                                 | |
+| --output_path    | str  | Output directory                                            | | 
 | --sample_method  | str  | Which method to use to sample parameter space.              | 'halton' or 'latinhypercube'|
 | --n1             | int  | Number of samples to draw initially to advance the sequence | |
 | --n2             | int  | Number of forward models to run                             | |
