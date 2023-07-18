@@ -13,3 +13,4 @@ dependencies:
   - pip:
     - gmshparser==0.2.0
   - petsc=3.17
+  - cmcrameri=1.4
