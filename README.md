@@ -37,13 +37,20 @@ You can check that GMSH commands work on the command line by entering this line,
 
 ### Generating meshes
 
-The code `driver_generate_mesh_generic.py` takes as input:
+The code `driver_generate_mesh_generic.py` takes as input start and end points for 2D profiles of slab data, in latitude and longitude coordinates, stored in a .csv file. It creates a .geo file for the geometry based on that profile. It automatically meshes the .geo file to create a .msh file with the computational mesh and several .msh files necessary for visualization purposes. 
 
-And performs the following steps
-- Takes a profile from Slab 2.0 data given certain start and end points, in latitude and longitude coordinates.
-- Creates a .geo file with the geometry based on that profile.
-- Meshes the .geo file to create a .msh file with the computational mesh.
-- 
+The code convert_msh_to_fenics_files.py converts .msh files to .xml files as required for fenics usage. It also writes other files with information about the mesh which are required for post-processing. 
+
+```
+cd generate_meshes 
+
+python3 driver_generate_mesh_generic.py --profile_csv "cascadia_start_end_points.csv" --slab_name "cascadia" --corner_depth -35.0 --output_path "output"
+
+cd ..
+
+python3 convert_msh_to_fenics_files.py --mesh_dir 'generate_meshes/output/cascadia_profile_B' --profile_name 'cascadia_profile_B' 
+
+```
 
 ### Parameter handling
 
