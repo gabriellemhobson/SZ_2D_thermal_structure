@@ -33,15 +33,11 @@ You can check that GMSH commands work on the command line by entering this line,
 
 `gmsh --info`
 
-## Setup 
-
-- setup.sh 
-
 ## Usage
 
 ### Generating meshes
 
-The code driver_generate_mesh_generic.py takes as input:
+The code `driver_generate_mesh_generic.py` takes as input:
 
 And performs the following steps
 - Takes a profile from Slab 2.0 data given certain start and end points, in latitude and longitude coordinates.
@@ -60,15 +56,26 @@ The user should decide which parameters they wish to vary when running the forwa
 slab_vel 4.0 5.0 cm/yr
 ```
 
+| Parameter name    | Description                | Reasonable range | Units |
+| ---------------- | ---- | --- | --- |
+| slab_vel | Slab velocity  | [3, 5] | cm/yr |
+| ddc | Depth of decoupling | [70, 80] | km |
+| deg_pc | Degree of partial coupling | [0, 0.1] | |
+| mu | Coefficient of friction | [0, 0.1] | |
+| A_diff | Diffusion creep pre-exp factor | [2.5 x $10^7$, 2.4 x $10^{10}$] | Pa s |
+| E_diff | Diffusion creep activation energy | [300 x $10^3$, 450 x $10^3$] | J/mol |
+| A_disl | Dislocation creep pre-exp factor  | [1 x $10^4$, 5 x $10^4$] | Pa $\text{s}^{1/\text{n}} |
+| E_disl | Dislocation creep activation energy | [480 x $10^3$, 560 x $10^3$] | J/mol |
+| n | Power law exponent | [0, 3.5] | |
+| T_b | Mantle inflow temperature | [1550, 1750] | °K |
+| t_slab | Slab age | [8, 10] | Myr |
+| z_bc | Depth of geotherm | [10, 60] | km |
+
 ### Running forward models
 
-Running forward models is handled by `schedule_script.py`. The user passes in input arguments, which are specified below. The code in `schedule_script.py` creates an instance of the class contained in `forward_model.py`, given the input arguments. This class uses `ParametricModelUtils` so that forward models are batched, run, and their statuses tracked. 
+Running forward models is handled by `schedule_script.py`. The user passes in input arguments, which are specified below. The code in `schedule_script.py` creates an instance of the class contained in `forward_model.py`, given the input arguments. This class uses `ParametricModelUtils` so that forward models are batched, run, and their statuses tracked. In general usage, `forward_model.py` does not need to be edited or run. It is just called by `schedule_script.py`. 
 
-In general usage, `forward_model.py` does not need to be edited or run. It is just called by `schedule_script.py`. 
-
-**Input arguments for `schedule_script.py`:**
-
-Required arguments:
+**Required arguments for `schedule_script.py`:**
 
 | Argument name    | type | Description                                                 | Options |
 | ---------------- | ---- | ---                                                         | --- |
@@ -82,7 +89,7 @@ Required arguments:
 | --jobs_csv       | str  | Name of csv file to tracks jobs run.                        | |
 | --viscosity_type | str  | Type of viscosity flow law                                  | 'isoviscous', 'diffcreep', 'disccreep', or 'mixed' |
 
-Optional arguments:
+**Optional arguments for `schedule_script.py`:**
 
 | Argument name    | type | Description                                                 | Default |
 | ---------------- | ---- | ---                                                         | --- |
@@ -102,23 +109,40 @@ Optional arguments:
 ### Start-to-finish usage
 
 - Activate the conda environment 
+
     `conda activate SZ_2D_thermal_structure`
+
 - Check the repo is up to date and paths are correct
+
     `source setup.sh`
+
 - Enter the generate_mesh subdirectory 
+
     `cd generate_meshes`
+
 - Check that the slab profile info in the csv input file is correct. 
+
 - Generate the geometry and mesh files:
+
     `python3 driver_generate_mesh_generic.py --profile_csv "cascadia_start_end_points.csv" --slab_name "cascadia" --corner_depth -35.0 --output_path "output"`
+
 - Create the required mesh files for fenics usage and post-processing steps. 
+
     `cd ..`
     `python3 convert_msh_to_fenics_files.py --mesh_dir 'generate_meshes/output/cascadia_profile_B' --profile_name 'cascadia_profile_B' `
+
 - Check the `forward_model.py` script contains the correct info, paying special attention to the type of viscosity flow law, which forward model solver is used, and the number of iterations. 
+
 - Set the desired ranges of input parameters in `input_param.csv`. 
+
 - Set the forward model running. 
+
     `python3 schedule_script.py --profile_name "cascadia_profile_B" --mesh_dir "generate_meshes/output/cascadia_profile_B" --output_path "output/cascadia_profile_B/example" --sample_method "halton" --n1 1 --n2 1 --seed 92014 --jobs_csv "cascadia_profile_B_example_log.csv"`
+
 - Once the forward model is done, perform the post-processing steps to create plots and compute isotherm-slab interface intersection locations. 
+
     `python3 post_process.py --jobs_csv "cascadia_profile_B_example_log.csv" --mesh_path "generate_meshes/output/cascadia_profile_B" --profile_name "cascadia_profile_B" --include "halton"`
+    
 - Look at your plots and be proud that you've run this code!
 
 ## Exercises
