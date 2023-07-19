@@ -135,13 +135,11 @@ The script `post_process.py` handles reordering the model output, creating a plo
 
     `python3 convert_msh_to_fenics_files.py --mesh_dir 'generate_meshes/output/cascadia_profile_B' --profile_name 'cascadia_profile_B' `
 
-- Check the `forward_model.py` script contains the correct info, paying special attention to the type of viscosity flow law, which forward model solver is used, and the number of iterations. 
-
 - Set the desired ranges of input parameters in `input_param.csv`. 
 
 - Set the forward model running. 
 
-    `python3 schedule_script.py --profile_name "cascadia_profile_B" --mesh_dir "generate_meshes/output/cascadia_profile_B" --output_path "output/cascadia_profile_B/example" --sample_method "halton" --n1 1 --n2 1 --seed 92014 --jobs_csv "cascadia_profile_B_example_log.csv"`
+    `python3 schedule_script.py --profile_name "cascadia_profile_B" --mesh_dir "generate_meshes/output/cascadia_profile_B" --output_path "output/cascadia_profile_B/example" --sample_method "halton" --n1 1 --n2 1 --seed 92014 --jobs_csv "cascadia_profile_B_example_log.csv" --viscosity_type "isoviscous" `
 
 - Once the forward model is done, perform the post-processing steps to create plots and compute isotherm-slab interface intersection locations. 
 

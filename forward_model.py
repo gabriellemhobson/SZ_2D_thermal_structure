@@ -40,22 +40,27 @@ class Subduction(pm.ParametricModel):
         # log the params going in
         p = self.P._convert(params)
         vals = list(p.values())
-        viscosity_type = 'mixed'
-        tol = 1e-5
-        n_picard_it = 1
-        n_iters = 40
-        diff_tol = 1e-1
-        T_CG_order = 2
+        # viscosity_type = 'mixed'
+        # tol = 1e-5
+        # n_picard_it = 1
+        # n_iters = 10
+        # diff_tol = 1e-1
+        # T_CG_order = 2
         print('p',p)
         fp = open(os.path.join(base_dir, 'forward_subduction_detached.py'), "w")
         fp.write('import sys \n')
         fp.write('import os \n')
         fp.write('from collections import OrderedDict \n')
         fp.write('sys.path.append("'+os.pardir+'") \n')
-        fp.write('from forward_model_solvers import pde_solver_time_dep as pde_solver \n')
+        if self.input_dict['solver'] == 'ss':
+            fp.write('from forward_model_solvers import pde_solver_ss as pde_solver \n')
+        elif self.input_dict['solver'] == 'time_dep':
+            fp.write('from forward_model_solvers import pde_solver_time_dep as pde_solver \n')
+        else:
+            raise ValueError('Solver type must be "ss" or "time_dep". Exiting.')
         fp.write('import define_parameters \n')
         fp.write('solver = pde_solver.PDE_Solver("' + self.input_dict['meshfile_name']+'","'+self.input_dict['vizfile_name']+'","'+self.input_dict['dfield_fname']+'","'+self.input_dict['slab_d_fname']+'","'+self.input_dict['indices_fname']+'") \n')
-        fp.write('solver.param = define_parameters.Parameters('+str(T_CG_order)+',"'+str(viscosity_type)+'",'+str(tol)+','+str(n_picard_it)+','+str(n_iters)+','+str(diff_tol)+') \n')
+        fp.write('solver.param = define_parameters.Parameters('+str(self.input_dict['T_CG_order'])+',"'+str(self.input_dict['viscosity_type'])+'",'+str(self.input_dict['tol'])+','+str(self.input_dict['n_picard_it'])+','+str(self.input_dict['n_iters'])+','+str(self.input_dict['diff_tol'])+') \n')
         fp.write('solver.param.set_param(**'+ str(p) + ') \n')
         fp.write('solver.output_dir = "' + str(base_dir) + '" \n')
         fp.write('print("solver.output_dir",solver.output_dir) \n')

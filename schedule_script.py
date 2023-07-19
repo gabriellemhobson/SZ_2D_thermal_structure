@@ -24,6 +24,7 @@ parser.add_argument('--seed', type=int, required=True, help="Seed for the sequen
 parser.add_argument('--jobs_csv', type=str, required=True, help="Name of csv file to tracks jobs run.")
 parser.add_argument('--viscosity_type', type=str, required=True, help="Type of viscosity flow law. Options are 'isoviscous', 'diffcreep', 'disccreep', or 'mixed'.")
 # optional arguments
+parser.add_argument('--solver', type=str, default="ss", required=False, help="Type of solver, must be 'ss' or 'time_dep'. ")
 parser.add_argument('--tol', type=float, default=1e-5, required=False, help="Residuals for pde solutions in forward model solve must be below this tolerance.")
 parser.add_argument('--n_picard_it', type=int, default=10, required=False, help="Maximum number of picard iterations.")
 parser.add_argument('--n_iters', type=int, default=10, required=False, help="Maximum number of iterations.")
