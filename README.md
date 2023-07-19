@@ -1,6 +1,6 @@
 # SZ_2D_thermal_structure 
 
-This code was developed by Gabrielle Hobson and Dave May and is distributed under the "LICENSE". It is part of the Megathrust Modeling Framework ([MTMOD](https://sites.utexas.edu/mtmod/)), supported by NSF FRES grant EAR-2121568. 
+This code was developed by Gabrielle Hobson and Dave May and is distributed under the "LICENSE ?". It is part of the Megathrust Modeling Framework ([MTMOD](https://sites.utexas.edu/mtmod/)), supported by NSF FRES grant EAR-2121568. 
 
 ## Install and environment 
 
@@ -47,14 +47,17 @@ And performs the following steps
 
 ### Parameter handling
 
-The file `define_parameters.py` creates a class with the base case values for the parameters stored as attributes. An instance of this class is passed to the forward model solver. It handles the required nondimensionalization and also contains the function `set_param` which is used to update or set existing parameter attributes while handling the nondimensionalization. 
+The file `define_parameters.py` creates a class with the base case values for the parameters stored as attributes. An instance of this class is passed to the forward model solver. It handles the required nondimensionalization and also contains the function `set_param()` which is used to update or set existing parameter attributes while handling the nondimensionalization. 
 
-The user should decide which parameters they wish to vary when running the forward model and set the ranges in the file `input_param.csv`. The file is space-delimited and should contain the parameter name, the min value, the max value, and the units. For example, to vary the slab velocity between 4.0 and 5.0 cm/yr, the `input_param.csv` file should look like this:
+The user should decide which parameters they wish to vary when running the forward model and set the ranges in the file `input_param.csv`. The file is space-delimited and should contain the parameter name, the min value, the max value, and the units. For example, to vary the slab velocity and coefficient of friction, the `input_param.csv` file should look like this:
 
 ```
 # parameter name, min value, max value, unit
 slab_vel 4.0 5.0 cm/yr
+mu 0.02 0.04 ~
 ```
+
+Here are some suggested ranges for parameters to vary. 
 
 | Parameter name    | Description                | Reasonable range | Units |
 | ---------------- | ---- | --- | --- |
@@ -64,11 +67,11 @@ slab_vel 4.0 5.0 cm/yr
 | mu | Coefficient of friction | [0, 0.1] | |
 | A_diff | Diffusion creep pre-exp factor | [2.5 x $10^7$, 2.4 x $10^{10}$] | Pa s |
 | E_diff | Diffusion creep activation energy | [300 x $10^3$, 450 x $10^3$] | J/mol |
-| A_disl | Dislocation creep pre-exp factor  | [1 x $10^4$, 5 x $10^4$] | Pa $\text{s}^{1/\text{n}} |
+| A_disl | Dislocation creep pre-exp factor  | [1 x $10^4$, 5 x $10^4$] | Pa s^(1/n) |
 | E_disl | Dislocation creep activation energy | [480 x $10^3$, 560 x $10^3$] | J/mol |
 | n | Power law exponent | [0, 3.5] | |
-| T_b | Mantle inflow temperature | [1550, 1750] | °K |
-| t_slab | Slab age | [8, 10] | Myr |
+| Tb | Mantle inflow temperature | [1550, 1750] | °K |
+| slab_age | Slab age | [8, 10] | Myr |
 | z_bc | Depth of geotherm | [10, 60] | km |
 
 ### Running forward models
@@ -93,18 +96,18 @@ Running forward models is handled by `schedule_script.py`. The user passes in in
 
 | Argument name    | type | Description                                                 | Default |
 | ---------------- | ---- | ---                                                         | --- |
+| --solver  | str | Type of forward model solver, must be 'ss' or 'time_dep'. | 'ss' |
 | --tol  | float | Residuals for pde solutions in forward model solve must be below this tolerance. | 1e-5|
 | --n_picard_it | int | Maximum number of picard iterations. | 10 |
 | --n_iters | int | Maximum number of iterations. | 10 | 
 | --diff_tol | float | Tolerance for reaching a converged solution. | 1e-1 |
 | --T_CG_order | int | Order of CG elements for temperature. | 2 | 
 
-
-! Last edited thing in forward_model.py is which solver to call
-
-! Max number of jobs should be number of cores
-
 ### Post-processing and plotting
+
+The script `post_process.py` handles reordering the model output, creating a plot of the thermal structure, computing the locations of intersections between specific isotherms and the slab interface, and creating a plot of those isotherms. 
+
+`python3 post_process.py --jobs_csv "cascadia_profile_B_example_log.csv" --mesh_path "generate_meshes/output/cascadia_profile_B" --profile_name "cascadia_profile_B" --include "halton"`
 
 ### Start-to-finish usage
 
@@ -129,6 +132,7 @@ Running forward models is handled by `schedule_script.py`. The user passes in in
 - Create the required mesh files for fenics usage and post-processing steps. 
 
     `cd ..`
+
     `python3 convert_msh_to_fenics_files.py --mesh_dir 'generate_meshes/output/cascadia_profile_B' --profile_name 'cascadia_profile_B' `
 
 - Check the `forward_model.py` script contains the correct info, paying special attention to the type of viscosity flow law, which forward model solver is used, and the number of iterations. 
