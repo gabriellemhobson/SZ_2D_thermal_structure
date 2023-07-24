@@ -6,10 +6,10 @@ Then computes the transfer matrix between the T_CG_order FunctionSpace associate
 and forward model solutions and the CG 1 order FunctionSpace associated with the visualization mesh. 
 This transfer matrix is written to file for later use. 
 '''
-from utils import process_mesh
 import os
 import subprocess
 import argparse
+from utils import process_mesh
 
 class CMDA: # cmdline_args
     pass
@@ -18,7 +18,7 @@ args = CMDA()
 parser = argparse.ArgumentParser()
 parser.add_argument('--mesh_dir', type=str, required=True, help="Path where mesh files are stored.")
 parser.add_argument('--profile_name', type=str, required=True, help="Name of specific profile to convert")
-
+parser.parse_known_args(namespace=args)
 
 v4_vizfile_name = os.path.join(args.mesh_dir,os.path.join('viz', args.profile_name+'_viz_v4_ascii.msh'))
 meshfile_name = os.path.join(args.mesh_dir,args.profile_name)
