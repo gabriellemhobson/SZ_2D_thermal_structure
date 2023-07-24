@@ -12,12 +12,7 @@ Once you have navigated to the main directory `SZ_2D_thermal_structure`, use the
 
 `conda env create -f environment.yml`
 
-This will create a conda environment named `SZ_2D_thermal_structure`. This code requires FEniCS 2019.1.0 which can be added to the environment like so:
-
-```
-conda activate SZ_2D_thermal_structure
-conda install -c conda-forge fenics
-```
+This will create a conda environment named `SZ_2D_thermal_structure`.
 
 This code has been tested for compatibility with PETSc versions 3.12, 3.14 and 3.17. There are differences between these versions that are handled in the code. Other versions of PETSc have not been tested and may not be compatible. 
 
