@@ -413,7 +413,7 @@ class Generate_Mesh:
         print('dimension', xy.shape)
         return boundaries, xy
 
-    def run_generate_mesh(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,plot_verbose=False,write_msh=True):
+    def run_generate_mesh(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,plot_verbose=False,write_msh=False):
 
         start_point = self.normalize_point(self.af,start_point_latlon)
         # end_point_xy = trench_normal(point,scaling,trench_xy)

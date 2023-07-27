@@ -60,16 +60,19 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
         profiles.append(profile)
         profiles_lat_lon_arr.append(profile_lat_lon)
 
-        command = ["gmsh", geo_filename, "-parse_and_exit"]
-        subprocess.run(command)
+        if args.write_msh:
+          command = ["gmsh", geo_filename, "-parse_and_exit"]
+          CP = subprocess.run(command)
+          if CP.returncode != 0:
+            raise RuntimeError('Error running command',str(command), ', subprocess returncode is ',CP.returncode)
 
-        # move files to appropriate subdirectories
-        os.rename(geo_filename, os.path.join(output_subfolder, geo_filename))
-        os.rename(geo_filename[:-4]+'.msh', os.path.join(output_subfolder, geo_filename[:-4]+'.msh'))
-        viz_subfolder = os.path.join(output_subfolder,"viz")
-        os.makedirs(viz_subfolder,exist_ok=True)
-        os.rename(geo_filename[:-4]+'_viz.msh', os.path.join(viz_subfolder, geo_filename[:-4]+'_viz.msh'))
-        os.rename(geo_filename[:-4]+'_viz_v4_ascii.msh', os.path.join(viz_subfolder, geo_filename[:-4]+'_viz_v4_ascii.msh'))
+          # move files to appropriate subdirectories
+          os.rename(geo_filename, os.path.join(output_subfolder, geo_filename))
+          os.rename(geo_filename[:-4]+'.msh', os.path.join(output_subfolder, geo_filename[:-4]+'.msh'))
+          viz_subfolder = os.path.join(output_subfolder,"viz")
+          os.makedirs(viz_subfolder,exist_ok=True)
+          os.rename(geo_filename[:-4]+'_viz.msh', os.path.join(viz_subfolder, geo_filename[:-4]+'_viz.msh'))
+          os.rename(geo_filename[:-4]+'_viz_v4_ascii.msh', os.path.join(viz_subfolder, geo_filename[:-4]+'_viz_v4_ascii.msh'))
 
     fig_name = slab_id + '_slices.pdf'
     fig_name = os.path.join(output_path, fig_name)
@@ -249,7 +252,7 @@ if __name__ == '__main__':
     parser.add_argument('--profile_csv', type=str, required=True, help="CSV file defining the profiles")
     parser.add_argument('--slab_name', type=str, required=True, help="Textual identifier you want to associate with the output generated")
     parser.add_argument('--output_path', type=str, default='./', required=False, help="Path where generated output will be written")
-    parser.add_argument('--write_msh', type=bool, default=True, required=False, help="Bool for whether or not to write .msh file.")
+    parser.add_argument('--write_msh', type=bool, default=False, required=False, help="Bool for whether or not to write .msh file.")
 
     # These options may also be readily parsed from an input file if
     # the command line argument approach becomes unmanageable.
