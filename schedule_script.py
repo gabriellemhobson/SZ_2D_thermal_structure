@@ -49,6 +49,7 @@ input_dict = {'mesh_dir':mesh_dir,\
               'slab_d_fname':slab_d_fname,\
               'indices_fname':indices_fname,\
               'viscosity_type':args.viscosity_type,\
+              'solver':args.solver,\
               'tol':args.tol,\
               'n_picard_it':args.n_picard_it,\
               'n_iters':args.n_iters,\
