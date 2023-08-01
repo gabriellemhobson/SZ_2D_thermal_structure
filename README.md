@@ -129,7 +129,7 @@ The script `post_process.py` handles reordering the model output, creating a plo
 
 - Generate the geometry and mesh files:
 
-    `python3 driver_generate_mesh_generic.py --profile_csv "cascadia_start_end_points.csv" --slab_name "cascadia" --corner_depth -35.0 --output_path "output"`
+    `python3 driver_generate_mesh_generic.py --profile_csv "cascadia_start_end_points.csv" --slab_name "cascadia" --corner_depth -35.0 --output_path "output" --write_msh True`
 
 - Create the required mesh files for fenics usage and post-processing steps. 
 
