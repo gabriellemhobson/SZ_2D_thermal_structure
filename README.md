@@ -32,20 +32,42 @@ You can check that GMSH commands work on the command line by entering this line,
 
 ### Generating meshes
 
-The code `driver_generate_mesh_generic.py` takes as input start and end points for 2D profiles of slab data, in latitude and longitude coordinates, stored in a .csv file. It creates a .geo file for the geometry based on that profile. The argument `--write_msh` is by default set to `False`, but if it is set to `True`, it automatically meshes the .geo file to create a .msh file with the computational mesh and several .msh files necessary for visualization purposes.
+The code `driver_generate_mesh_generic.py` takes as input start and end points for 2D profiles of slab data, in latitude and longitude coordinates, stored in a .csv file. It creates a .geo file for the geometry based on that profile. The argument `--write_msh` is by default set to `False`, but if it is included in the command line arguments, it automatically meshes the .geo file to create a .msh file with the computational mesh and several .msh files necessary for visualization purposes.
 
 The code `convert_msh_to_fenics_files.py` converts .msh files to .xml files as required for fenics usage. It also writes other files with information about the mesh which are required for post-processing. 
 
 ```
 cd generate_meshes 
 
-python3 driver_generate_mesh_generic.py --profile_csv "cascadia_start_end_points.csv" --slab_name "cascadia" --corner_depth -35.0 --output_path "output" --write_msh False
+# to just write the .geo files
+python3 driver_generate_mesh_generic.py --profile_csv "cascadia_start_end_points.csv" --slab_name "cascadia" --corner_depth -35.0 --output_path "output"
+
+# OR, to write .geo and .msh files
+python3 driver_generate_mesh_generic.py --profile_csv "cascadia_start_end_points.csv" --slab_name "cascadia" --corner_depth -35.0 --output_path "output" --write_msh
 
 cd ..
 
 python3 convert_msh_to_fenics_files.py --mesh_dir 'generate_meshes/output/cascadia_profile_B' --profile_name 'cascadia_profile_B' 
 
 ```
+
+#### Manually exporting meshes
+
+If you did not include the --write_msh flag, there will just be .geo files written and not .msh files. To manually generate the correct msh files using the GMSH GUI:
+
+- Open geo file, let’s say it is called filename.geo
+- In mesh section of side menu, hit Mesh 2D
+- File > Export, select .msh file type. The file name should be filename.msh. Hit Save
+- MSH Options box will pop up, choose Version 2 ASCII
+
+- Under Mesh, click Refine by Splitting (only once for P2, twice for P4 etc). 
+- File > Export, change the filename to be filename_viz.msh. Then hit Save
+- MSH Options box will pop up, choose Version 2 ASCII
+
+- File > Export, change the filename to be filename_viz_v4_ascii.msh. Then hit Save
+- MSH Options box will pop up, choose Version 4 ASCII
+
+Both viz files should be placed in a subfolder called viz located in the same directory as the computation .geo and .msh files. 
 
 ### Parameter handling
 
@@ -129,7 +151,7 @@ The script `post_process.py` handles reordering the model output, creating a plo
 
 - Generate the geometry and mesh files:
 
-    `python3 driver_generate_mesh_generic.py --profile_csv "cascadia_start_end_points.csv" --slab_name "cascadia" --corner_depth -35.0 --output_path "output" --write_msh True`
+    `python3 driver_generate_mesh_generic.py --profile_csv "cascadia_start_end_points.csv" --slab_name "cascadia" --corner_depth -35.0 --output_path "output" --write_msh`
 
 - Create the required mesh files for fenics usage and post-processing steps. 
 

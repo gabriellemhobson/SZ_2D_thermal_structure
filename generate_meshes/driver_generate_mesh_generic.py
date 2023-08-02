@@ -252,7 +252,8 @@ if __name__ == '__main__':
     parser.add_argument('--profile_csv', type=str, required=True, help="CSV file defining the profiles")
     parser.add_argument('--slab_name', type=str, required=True, help="Textual identifier you want to associate with the output generated")
     parser.add_argument('--output_path', type=str, default='./', required=False, help="Path where generated output will be written")
-    parser.add_argument('--write_msh', type=bool, default=False, required=False, help="Bool for whether or not to write .msh file.")
+    # parser.add_argument('--write_msh', type=bool, required=True, help="Bool for whether or not to write .msh file.")
+    parser.add_argument('--write_msh', action='store_true')
 
     # These options may also be readily parsed from an input file if
     # the command line argument approach becomes unmanageable.
