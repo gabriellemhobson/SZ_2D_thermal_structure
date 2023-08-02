@@ -1,7 +1,7 @@
 # parameter name, min value, max value, unit
 slab_vel 4.0 5.0 cm/yr
-mu 0.0 0.1 ~
-ddc 70.0 80.0 km
+# mu 0.0 0.1 ~
+# ddc 70.0 80.0 km
 # deg_pc 0.0 0.1 frac
 # A_diff 2.50e7 2.40e10 ~
 # E_diff 3.00e5 4.50e5 J/mol
@@ -9,5 +9,5 @@ ddc 70.0 80.0 km
 # E_disl 4.80e5 5.60e5 J/mol
 # n 3.2 3.8 ~
 # Tb 1550 1750 K
-# slab_age 8.0 10.0 Myr
+slab_age 8.0 10.0 Myr
 # z_bc 10.0 60.0 km 
