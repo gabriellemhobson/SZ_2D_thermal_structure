@@ -122,7 +122,11 @@ for dir in jobs_log["path"]:
     # level_vals = (150,350,450,600,800,1000,1200)
     # my_plotting_tool = plotting.Plotting(title,png_name,level_vals,iso_info)
     my_plotting_tool = plotting.Plotting(title,png_name,level_vals)
-    my_plotting_tool.plot_result(coords_x,coords_y,mesh_cells,result)
+    tri_mesh = my_plotting_tool.plot_result(coords_x,coords_y,mesh_cells,result)
+
+    # save the tri_mesh so it can be used elsewhere
+    tri_mesh._cpp_triangulation = None
+    lw.write(tri_mesh,os.path.join(dir,"tri_mesh.pkl"))
 
     font_size = 18
     fig = plt.figure(figsize=(20,12))

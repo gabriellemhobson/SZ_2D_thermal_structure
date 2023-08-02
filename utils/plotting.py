@@ -63,6 +63,8 @@ class Plotting():
         # plt.rcParams["font.family"] = "Times"
         plt.savefig(self.png_name)
         plt.close("all")
+
+        return tri_mesh
         
     def plot_isotherm_variation(self,x,y,mesh_cells,X,Y,X_eval):
         print('Plotting isotherm variation')
