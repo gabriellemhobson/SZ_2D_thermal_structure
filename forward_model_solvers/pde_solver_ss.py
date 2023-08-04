@@ -307,8 +307,8 @@ class PDE_Solver():
         J.vector().apply('')
 
         P_T = FiniteElement("CG", self.mesh.ufl_cell(), self.param.T_CG_order)
-        W_T = FunctionSpace(self.mesh, P_T)
-        J_viz = project(J,W_T,solver_type='mumps')
+        # W_T = FunctionSpace(self.mesh, P_T)
+        J_viz = project(J,self.W_T,solver_type='mumps')
 
         P_idx = FiniteElement("CG", self.mesh_viz.ufl_cell(), 1)
         W_idx = FunctionSpace(self.mesh_viz, P_idx)
@@ -399,24 +399,47 @@ class PDE_Solver():
         # update inflow/outflow bc
         self.update_inflow_boundary(u_n)
         return u_n
-
-    def solver_adv_diff(self,u_n,J,D_Field):
-        # define function space for temperature
-        P_T = FiniteElement("CG", self.mesh.ufl_cell(), self.param.T_CG_order)
-        W_T = FunctionSpace(self.mesh, P_T)
-        v_T = TestFunction(W_T)
-        phi_T = TrialFunction(W_T)
-
-        T_n = Function(W_T)
-
+    
+    def get_depths(self):
         # get depth of overlying plate, for linear right-hand bc
         overplate_right_coords_y = []
         for facet in facets(self.mesh):
             if (self.boundaries.array()[facet.index()] == self.overplate_right):
                 for v in vertices(facet):
                     overplate_right_coords_y.append(v.point().y())
-        z_base = np.min(overplate_right_coords_y)
-        z_top = np.max(overplate_right_coords_y)
+        self.z_base = np.min(overplate_right_coords_y)
+        self.z_top = np.max(overplate_right_coords_y)
+        return 
+
+
+    def get_H_sh(self,J,D_Field):
+        # this should give the shear heating field and only needs to be done once
+        class Pressure(UserExpression):
+            def __init__(self, param, z_base, z_top, **kwargs):
+                super(Pressure, self).__init__(**kwargs)
+                self.param = param
+                self.z_base = z_base
+                self.z_top = z_top
+            def eval(self, values, x):
+                if x[1] >= self.z_base:
+                    values[0] = self.param.rho_crust*self.param.g*np.abs(x[1] - self.z_top)
+                if x[1] < self.z_base:
+                    values[0] = (self.param.rho_crust*self.param.g*np.abs(self.z_base - self.z_top) \
+                        + self.param.rho_mantle*self.param.g*np.abs(x[1] - self.z_base))
+            def value_shape(self):
+                return (1,)
+
+        pressure = Pressure(self.param, self.z_base, self.z_top)
+        H_sh = Expression(("(mu*jump*p)/(abs(sig)*sqrt(2*pi))*exp(-pow(d,2)/(2*pow(sig,2)))"), \
+            degree=1, mu=self.param.mu, d=D_Field,sig=self.param.sigma,jump=J,p=pressure)
+        H_sh_field = self.project_gmh(H_sh,self.W_T)
+        H_sh_file = File(os.path.join(self.output_dir,"H_sh.pvd"))
+        H_sh_file << H_sh_field
+        return H_sh_field
+
+
+    def solver_adv_diff(self,u_n,H_sh_field):
+        T_n = Function(self.W_T)
 
         # Tbcs
         Tleft = Expression("Ts + (T0-Ts)*erf(abs(x[1])/(2*sqrt(kappa*slab_age)))", T0 = self.param.Tb, Ts = self.param.Ts, kappa = self.param.kappa_slab, slab_age=self.param.slab_age, degree = self.param.T_CG_order)  # half-space cooling on slab_left
@@ -456,66 +479,44 @@ class PDE_Solver():
             def value_shape(self):
                 return (1,)
 
-        TP = TPlate(self.param,z_base,z_top)
+        TP = TPlate(self.param,self.z_base,self.z_top)
         Tplate = Expression("TP", TP=TP, degree = self.param.T_CG_order)
 
-        TIn = TInflow(self.param,z_base,z_top)
+        TIn = TInflow(self.param,self.z_base,self.z_top)
         T_inflow = Expression("TIn", TIn=TIn, degree = self.param.T_CG_order)
 
         # Initialise temperature
         Tinit = Expression("Tinit", Tinit = self.param.Ts, degree=self.param.T_CG_order) 
         T_n.interpolate(Tinit)
 
-        Tbcs = [DirichletBC(W_T, Tleft, self.boundaries, self.slab_left)]
+        Tbcs = [DirichletBC(self.W_T, Tleft, self.boundaries, self.slab_left)]
         for bc in Tbcs:
             bc.apply(T_n.vector())
         T_base_val = np.max(T_n.vector()[:])
         T_base_exp = Expression("T_base", T_base=T_base_val, degree=self.param.T_CG_order)
-        Tbcs.append(DirichletBC(W_T, T_base_exp, self.boundaries, self.slab_base))
-        Tbcs.append(DirichletBC(W_T, Tplate, self.boundaries, self.overplate_right))
-        # Tbcs.append(DirichletBC(W_T, Constant(self.param.Tb), self.boundaries, self.inflow_wedge))
-        Tbcs.append(DirichletBC(W_T, T_inflow, self.boundaries, self.inflow_wedge))
-        Tbcs.append(DirichletBC(W_T, Constant(self.param.Ts), self.boundaries, self.surface))
+        Tbcs.append(DirichletBC(self.W_T, T_base_exp, self.boundaries, self.slab_base))
+        Tbcs.append(DirichletBC(self.W_T, Tplate, self.boundaries, self.overplate_right))
+        # Tbcs.append(DirichletBC(self.W_T, Constant(self.param.Tb), self.boundaries, self.inflow_wedge))
+        Tbcs.append(DirichletBC(self.W_T, T_inflow, self.boundaries, self.inflow_wedge))
+        Tbcs.append(DirichletBC(self.W_T, Constant(self.param.Ts), self.boundaries, self.surface))
 
         Tbcs_res = [bc for bc in Tbcs]
 
         for bc in Tbcs:
             bc.apply(T_n.vector())
 
-        F_temp = inner(grad(v_T), Constant(self.param.k_slab)*grad(phi_T))*self.dx(17)
-        F_temp += inner(grad(v_T), Constant(self.param.k_mantle)*grad(phi_T))*self.dx(18)
-        F_temp += inner(grad(v_T), Constant(self.param.k_crust)*grad(phi_T))*self.dx(19)
-        F_temp += Constant(self.param.rho_slab)*Constant(self.param.cp)*v_T*inner(u_n, grad(phi_T))*self.dx(17)
-        F_temp += Constant(self.param.rho_mantle)*Constant(self.param.cp)*v_T*inner(u_n, grad(phi_T))*self.dx(18)
-        F_temp += Constant(self.param.rho_crust)*Constant(self.param.cp)*v_T*inner(u_n, grad(phi_T))*self.dx(19)
+        F_temp = inner(grad(self.v_T), Constant(self.param.k_slab)*grad(self.phi_T))*self.dx(17)
+        F_temp += inner(grad(self.v_T), Constant(self.param.k_mantle)*grad(self.phi_T))*self.dx(18)
+        F_temp += inner(grad(self.v_T), Constant(self.param.k_crust)*grad(self.phi_T))*self.dx(19)
+        F_temp += Constant(self.param.rho_slab)*Constant(self.param.cp)*self.v_T*inner(u_n, grad(self.phi_T))*self.dx(17)
+        F_temp += Constant(self.param.rho_mantle)*Constant(self.param.cp)*self.v_T*inner(u_n, grad(self.phi_T))*self.dx(18)
+        F_temp += Constant(self.param.rho_crust)*Constant(self.param.cp)*self.v_T*inner(u_n, grad(self.phi_T))*self.dx(19)
 
         # # add in shear heating
-
-        class Pressure(UserExpression):
-            def __init__(self, param, z_base, z_top, **kwargs):
-                super(Pressure, self).__init__(**kwargs)
-                self.param = param
-                self.z_base = z_base
-                self.z_top = z_top
-            def eval(self, values, x):
-                if x[1] >= self.z_base:
-                    values[0] = self.param.rho_crust*self.param.g*np.abs(x[1] - z_top)
-                if x[1] < self.z_base:
-                    values[0] = (self.param.rho_crust*self.param.g*np.abs(self.z_base - self.z_top) \
-                        + self.param.rho_mantle*self.param.g*np.abs(x[1] - self.z_base))
-            def value_shape(self):
-                return (1,)
-
-        pressure = Pressure(self.param, z_base, z_top)
-        H_sh = Expression(("(mu*jump*p)/(abs(sig)*sqrt(2*pi))*exp(-pow(d,2)/(2*pow(sig,2)))"), \
-            degree=1, mu=self.param.mu, d=D_Field,sig=self.param.sigma,jump=J,p=pressure)
-        H_sh_field = self.project_gmh(H_sh,W_T)
-        H_sh_file = File(os.path.join(self.output_dir,"H_sh.pvd"))
-        H_sh_file << H_sh_field
         
-        F_temp += - inner(H_sh_field,v_T)*dx # minus sign is here so that lhs() and rhs() works out
+        F_temp += - inner(H_sh_field,self.v_T)*dx # minus sign is here so that lhs() and rhs() works out
         a_T,L_T = lhs(F_temp),rhs(F_temp)
-        T_i = Function(W_T)
+        T_i = Function(self.W_T)
         if (major_minor == "3.12"):
             # print('Starting energy equation solve.')
             solve( a_T == L_T, T_i, Tbcs)
@@ -533,9 +534,9 @@ class PDE_Solver():
             # print('Starting energy equation solve.')
             solver.solve(T_i.vector(),b)
             # print('Finished with energy equation solve.')
-        res_T = self.compute_residual(F_temp,T_i,W_T,Tbcs_res)
+        res_T = self.compute_residual(F_temp,T_i,self.W_T,Tbcs_res)
         T_n.assign(T_i)
-        return T_n, res_T.norm('l2'), W_T
+        return T_n, res_T.norm('l2')
 
     def compute_residual(self,F_s,w,W,bcs):
         w_ = Function(W)
@@ -635,17 +636,22 @@ class PDE_Solver():
             ValueError('The param slab_vel must be greater than 0.')
 
     def run_solver(self):
-
         self.error_checking()
         if self.param == None:
             AttributeError('The param object has not been set. Please set PDE_Solver.param ')
+
+        # define function space for temperature
+        P_T = FiniteElement("CG", self.mesh.ufl_cell(), self.param.T_CG_order)
+        self.W_T = FunctionSpace(self.mesh, P_T)
+        self.v_T = TestFunction(self.W_T)
+        self.phi_T = TrialFunction(self.W_T)
 
         D_Field,slab_d_field,I_Field = self.distance_fields()
 
         tfile_pvd = File(os.path.join(self.output_dir,"temperature.pvd"))
         ufile_pvd = File(os.path.join(self.output_dir,"velocity.pvd"))
 
-        # first solve isoviscous case
+        # first solve isoviscous case in slab
         eta_slab,eta_wedge = self.isoviscous()
         u_n_slab = self.solve_slab_flow(eta_slab,eta_wedge)
 
@@ -659,16 +665,23 @@ class PDE_Solver():
         # wedge_sub_pvd << wedge_sub
         # oplate_sub_pvd = File(os.path.join(self.output_dir,"oplate.pvd"))
         # oplate_sub_pvd << overplate_sub
+
         u_n,collect_bc = self.apply_pc_and_trans(u_n_slab,slab_d_field)
 
         J_idx = self.compute_jump(u_n_slab,u_n,I_Field)
 
+        self.get_depths() # this can be anywhere after meshes are loaded
+
+        # compute shear heating
+        H_sh_field = self.get_H_sh(J_idx,D_Field)
+
+        # first solve isoviscous case
         i = 0
         while i<self.param.n_picard_it:
             u_n = self.solver_stokes(eta_wedge,u_n,collect_bc,I_Field)
-            ufile_pvd << u_n
-            T_n, res_T, W_T = self.solver_adv_diff(u_n,J_idx,D_Field)
-            tfile_pvd << T_n
+            # ufile_pvd << u_n
+            T_n, res_T = self.solver_adv_diff(u_n,H_sh_field)
+            # tfile_pvd << T_n
             print("Picard iteration: ", i)
             # print('residual u: {0}'.format(res_u))
             print('residual T: {0}'.format(res_T))
@@ -683,14 +696,15 @@ class PDE_Solver():
         # G_file = File(self.output_dir + 'gaussian.pvd')
         G = Expression(("1/(abs(sig)*sqrt(2*pi))*exp(-pow(d,2)/(2*pow(sig,2)))"), \
             degree=1, d=D_Field,sig=self.param.sigma)
-        G_field = self.project_gmh(G,W_T)
+        G_field = self.project_gmh(G,self.W_T)
         # G_file << G_field
 
         int_G = assemble(G_field*self.dx)
-        # print('Integral of Gaussian, compute mesh',int_G)
+        print('Integral of Gaussian, compute mesh',int_G)
+
         eta_pvd = File(os.path.join(self.output_dir,"viscosity.pvd"))
         if self.param.viscosity_type != 'isoviscous':
-            T_old = Function(W_T)
+            T_old = Function(self.W_T)
             T_old.assign(T_n)
             for k_it in range((self.param.n_iters)):
                 print('solve', k_it)
@@ -720,7 +734,7 @@ class PDE_Solver():
                 
                     # u_n = self.solver_stokes(eta_wedge,u_n,collect_bc,I_Field)
                     u_n = self.solver_stokes(eta_field,u_n,collect_bc,I_Field)
-                    T_n, res_T, W_T = self.solver_adv_diff(u_n,J_idx,D_Field)
+                    T_n, res_T = self.solver_adv_diff(u_n,H_sh_field)
 
                     print("Picard iteration: ", i)
                     # print('residual u: {0}'.format(res_u))
@@ -735,9 +749,12 @@ class PDE_Solver():
                 if (T_old.vector() - T_n.vector()).norm('l2') < self.param.diff_tol:
                     break
                 T_old.assign(T_n)
-            eta_pvd << eta_field
+            eta_store = self.project_gmh(eta_field,FunctionSpace(self.mesh, FiniteElement("CG", self.mesh.ufl_cell(), 1)))
+            eta_pvd << eta_store
         tfile_pvd << T_n
         ufile_pvd << u_n
         
 
         self.write(np.array(T_n.vector()),os.path.join(self.output_dir, "temperature.pkl"))
+        if self.param.viscosity_type != 'isoviscous':
+            self.write(np.array(eta_store.vector()),os.path.join(self.output_dir, "viscosity.pkl"))
