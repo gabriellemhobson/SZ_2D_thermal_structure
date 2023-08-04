@@ -1,6 +1,6 @@
 # SZ_2D_thermal_structure 
 
-This code was developed by Gabrielle Hobson and Dave May and is distributed under the "LICENSE ?". It is part of the Megathrust Modeling Framework ([MTMOD](https://sites.utexas.edu/mtmod/)), supported by NSF FRES grant EAR-2121568. 
+This code was developed by Gabrielle Hobson and Dave May and is distributed under the GNU GPL v3 license. It is part of the Megathrust Modeling Framework ([MTMOD](https://sites.utexas.edu/mtmod/)), supported by NSF FRES grant EAR-2121568. 
 
 ## Install and environment 
 
@@ -170,11 +170,3 @@ The script `post_process.py` handles reordering the model output, creating a plo
     `python3 post_process.py --jobs_csv "cascadia_profile_B_example_log.csv" --mesh_path "generate_meshes/output/cascadia_profile_B" --profile_name "cascadia_profile_B" --include "halton"`
     
 - Look at your plots and be proud that you've run this code!
-
-## Exercises
-
-### Exercise #1
-
-### Exercise #2
-
-### Exercise #3
