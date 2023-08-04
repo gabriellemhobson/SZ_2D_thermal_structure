@@ -98,6 +98,9 @@ for dir in jobs_log["path"]:
     result = lw.load(os.path.join(dir, "temperature_reordered.pkl"))
     result_arr.append(result)
     T = result[TAGS]
+
+    lw.write(T, os.path.join(dir,"T.pkl"))
+
     # print(T)
     # find iso info and write it
     iso_info = find_iso.locate_isotherm_intersection(X,Y,T,int(1e6),1e-6)
