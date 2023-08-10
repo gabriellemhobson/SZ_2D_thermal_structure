@@ -436,6 +436,38 @@ class PDE_Solver():
         H_sh_file = File(os.path.join(self.output_dir,"H_sh.pvd"))
         H_sh_file << H_sh_field
         return H_sh_field
+    
+    def get_Hsh_modified(self,J,D_Field):
+        # this should give the shear heating field and only needs to be done once
+        class Pressure_Mod(UserExpression):
+            def __init__(self, param, z_base, z_top, **kwargs):
+                super(Pressure_Mod, self).__init__(**kwargs)
+                self.param = param
+                self.z_base = z_base
+                self.z_top = z_top
+            def eval(self, values, x):
+                if x[0] <= self.param.distance_fl:
+                    if x[1] >= self.z_base:
+                        values[0] = self.param.frac_p*self.param.rho_crust*self.param.g*np.abs(x[1] - self.z_top)
+                    if x[1] < self.z_base:
+                        values[0] = self.param.frac_p*(self.param.rho_crust*self.param.g*np.abs(self.z_base - self.z_top) \
+                            + self.param.rho_mantle*self.param.g*np.abs(x[1] - self.z_base))
+                else: 
+                    if x[1] >= self.z_base:
+                        values[0] = self.param.rho_crust*self.param.g*np.abs(x[1] - self.z_top)
+                    if x[1] < self.z_base:
+                        values[0] = (self.param.rho_crust*self.param.g*np.abs(self.z_base - self.z_top) \
+                            + self.param.rho_mantle*self.param.g*np.abs(x[1] - self.z_base))
+            def value_shape(self):
+                return (1,)
+
+        pressure = Pressure_Mod(self.param, self.z_base, self.z_top)
+        H_sh = Expression(("(mu*jump*p)/(abs(sig)*sqrt(2*pi))*exp(-pow(d,2)/(2*pow(sig,2)))"), \
+            degree=1, mu=self.param.mu, d=D_Field,sig=self.param.sigma,jump=J,p=pressure)
+        H_sh_field = self.project_gmh(H_sh,self.W_T)
+        H_sh_file = File(os.path.join(self.output_dir,"H_sh.pvd"))
+        H_sh_file << H_sh_field
+        return H_sh_field
 
 
     def solver_adv_diff(self,u_n,H_sh_field):
@@ -673,7 +705,7 @@ class PDE_Solver():
         self.get_depths() # this can be anywhere after meshes are loaded
 
         # compute shear heating
-        H_sh_field = self.get_H_sh(J_idx,D_Field)
+        H_sh_field = self.get_Hsh_modified(J_idx,D_Field)
 
         # first solve isoviscous case
         i = 0

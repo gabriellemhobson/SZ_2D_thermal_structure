@@ -14,8 +14,8 @@ class Parameters():
         self.slab_vel = 5.0*self.cmyr_to_ms/self.Vstar
         self.Ts = 273 # K, temp at surface
         self.Tb = 1573 # K, temp at inflow boundary of wedge
-        self.z_bc = None # km, depth of base of linear geotherm on overplate_right bc
-        self.slab_age = 8.0*(1e6*365.0*24.0*60.0*60.0)/self.Tstar # Myr in seconds, for erf() heat flow function, nondim
+        self.z_bc = 40 # km, depth of base of linear geotherm on overplate_right bc
+        self.slab_age = 20.0*(1e6*365.0*24.0*60.0*60.0)/self.Tstar # Myr in seconds, for erf() heat flow function, nondim
         # kappa_SI = 0.7272e-6 # m^2 s^-1
         # self.kappa = (kappa_SI / (self.Lstar**2)) * self.Tstar # nondimensional
         self.eta_max = 1e26 / self.Eta_star # Pa s then nondimensionalized
@@ -31,7 +31,7 @@ class Parameters():
         self.L_trans = 10 # km, width of transition
 
         self.char_kg = self.Eta_star * self.Lstar * self.Tstar # derived from Eta_star
-        self.mu = 0.03 # coefficient of friction
+        self.mu = 0.1 # coefficient of friction
         self.rho_mantle = 3300 / self.char_kg * (self.Lstar**3) # kg m^-3 -> nondimensionalized, density of the mantle
         self.rho_crust = 2700 / self.char_kg * (self.Lstar**3) # kg m^-3 density of crust
         self.rho_slab = 3300 / self.char_kg * (self.Lstar**3) # kg m^-3 density of slab
@@ -42,7 +42,7 @@ class Parameters():
         self.k_slab = 3.1 / self.char_kg / self.Lstar * (self.Tstar**3) # W / m K -> units of K
         self.cp = 1250 / (self.Lstar**2) * (self.Tstar **2) # J / kg K -> units of K
         self.kappa_slab = self.k_slab / (self.rho_slab * self.cp)
-        self.sigma = 0.2
+        self.sigma = 0.2 # 0.2 works for 0.5 km mesh resolution
 
         # set numerical parameters
         self.T_CG_order = T_CG_order
@@ -51,8 +51,12 @@ class Parameters():
         self.n_picard_it = n_picard_it
         self.n_iters = n_iters
         self.diff_tol = diff_tol
-        self.dt = 100000 * (365*24*60*60) / self.Tstar # 100,000 yrs nondimensionalized, only used when pde_solver_time_dep.py is used 
-        self.n_ts = 200
+        self.dt = 5e6 * (365*24*60*60) / self.Tstar # 100,000 yrs nondimensionalized, only used when pde_solver_time_dep.py is used 
+        self.n_ts = 350
+
+	    # adding parameters for fluid inclusion
+        self.frac_p = 1.0 # fraction of lithostatic pressure which is counteracted by pore fluid pressure
+        self.distance_fl = 60 # km from trench where fluid impact is imposed
 
     def order_param_dict(self):
         from collections import OrderedDict
@@ -136,6 +140,12 @@ class Parameters():
         if 'mu' in ks:
             self.mu = kwargs['mu']
             check_updated['mu'] = True
+        if 'frac_p' in ks:
+            self.frac_p = kwargs['frac_p']
+            check_updated['frac_p'] = True
+        if 'distance_fl' in ks:
+            self.distance_fl = kwargs['distance_fl']
+            check_updated['distance_fl'] = True
         if all(check_updated.values()):
             print('All parameter values have been updated.')
         else:

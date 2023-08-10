@@ -133,21 +133,54 @@ for dir in jobs_log["path"]:
 
     font_size = 18
     fig = plt.figure(figsize=(20,12))
-    ax1 = fig.add_subplot(211)
+    ax1 = fig.add_subplot(111)
     ax1.set_aspect('equal')
     ax1.scatter(T, Y)
     ax1.tick_params(axis='both', which='major', labelsize=font_size)
     ax1.set_xlabel('T (K)', fontsize=font_size)
     ax1.set_ylabel('y (km)', fontsize=font_size)
     
-    ax2 = fig.add_subplot(212)
-    ax2.set_aspect('equal')
-    ax2.scatter(T, X)
+    fig = plt.figure(figsize=(20,12))
+    ax2 = fig.add_subplot(111)
+    ax2.scatter(X, T-273)
     ax2.tick_params(axis='both', which='major', labelsize=font_size)
-    ax2.set_xlabel('T (K)', fontsize=font_size)
-    ax2.set_ylabel('x (km)', fontsize=font_size)
-    ax2.invert_yaxis()
-    plt.savefig("T_vs_X_and_Y.png")
+    ax2.set_ylabel('T (C)', fontsize=font_size)
+    ax2.set_xlabel('x (km)', fontsize=font_size)
+    ax2.grid(visible=True)
+    plt.savefig(os.path.join(dir,"T_vs_X.png"))
+
+
+    if os.path.isfile(os.path.join(dir,"viscosity.pkl")):
+        eta = lw.load(os.path.join(dir,"viscosity.pkl"))
+
+        x_comp = pm.mesh.coordinates()[:,0]
+        y_comp = pm.mesh.coordinates()[:,1]
+        cells_comp = pm.mesh.cells()
+        tri_comp = tri.Triangulation(x_comp, y_comp, cells_comp)
+
+        font_size = 24
+        cmap_name = 'magma'
+        # level_vals = (423,623,800,1000,1200,1400)
+
+        fig = plt.figure(figsize=(18,12))
+        ax1 = fig.add_subplot(111)
+        ax1.set_aspect('equal')
+        cfill = ax1.tricontourf(tri_comp, eta, levels=200, cmap=cmap_name)
+        cb = plt.colorbar(cfill, ax=ax1, fraction=0.025)
+        cb.set_label(label='T (K)', fontsize=font_size)
+        cb.ax.tick_params(labelsize=font_size)
+        contours = ax1.tricontour(tri_mesh, result, levels=level_vals, colors='k')
+
+        fig = plt.xlabel('x (km)', fontsize=font_size)
+        fig = plt.ylabel('y (km)', fontsize=font_size)
+        fig = plt.xticks(fontsize=font_size)
+        fig = plt.yticks(fontsize=font_size)
+        fig = plt.title(title, fontsize=font_size)
+        plt.xticks(fontsize=font_size);
+        plt.yticks(fontsize=font_size);
+        plt.show()
+
+        
 
 # isotherm variation plot
 font_size = 26
@@ -181,8 +214,8 @@ fig = plt.ylabel('y (km)', fontsize=font_size)
 plt.savefig(png_name)
 
 png_name = os.path.join(args.output_path,"isotherm_variation_inset.pdf")
-plt.xlim(0.0,350.0)
-plt.ylim(-160.0,0.0)
+plt.xlim(0.0,250.0)
+plt.ylim(-100.0,0.0)
 plt.savefig(png_name)
 
 plt.close("all")
