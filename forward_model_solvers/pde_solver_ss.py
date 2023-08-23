@@ -83,7 +83,7 @@ class PDE_Solver():
         self.surface = 20
         self.overplate_right = 21
         self.overplate_base = 22
-        self.overplate_left = 23
+        # self.overplate_left = 23
         self.slab_left = 24
         self.slab_overplate_int = 25
         self.slab_wedge_int = 27

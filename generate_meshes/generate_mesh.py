@@ -294,14 +294,18 @@ class Generate_Mesh:
             f.write('Extrude { Line{2}; } Using Wire {1}'); f.write('\n')
             f.write('pt_num = newp;'); f.write('\n')
             f.write('c[] = Point{pt_num-3};'); f.write('\n')
-            # Point(pt_num) = {-150.0, -1.0391570839971678+overplate_notch, 0.0, h_fine};
-            # Point(pt_num+1) = {530.1749673106902+extension_x, -1.0391570839971678+overplate_notch, 0.0, h_med};
-            f.write('Point(pt_num) = {' + str(profile[0,0]) + ', ' + str(profile[0,1]) + '+overplate_notch, ' + str(0.0) + ', ' + str(h[0]) + '};'); f.write('\n')
-            f.write('Point(pt_num+1) = {' + str(profile[-1,0]) + '+extension_x, ' + str(profile[0,1]) + '+overplate_notch, ' + str(0.0) + ', ' + str(h[0]) + '};'); f.write('\n')
+
+            # f.write('Point(pt_num) = {' + str(profile[0,0]) + ', ' + str(profile[0,1]) + '+overplate_notch, ' + str(0.0) + ', ' + str(h[0]) + '};'); f.write('\n')
+            # f.write('Point(pt_num+1) = {' + str(profile[-1,0]) + '+extension_x, ' + str(profile[0,1]) + '+overplate_notch, ' + str(0.0) + ', ' + str(h[0]) + '};'); f.write('\n')
+            
+            # f.write('Point(pt_num) = {' + str(profile[0,0]) + ', ' + str(profile[0,1]) + '+overplate_notch, ' + str(0.0) + ', ' + str(h[0]) + '};'); f.write('\n')
+            f.write('Point(pt_num+1) = {' + str(profile[-1,0]) + '+extension_x, ' + str(profile[0,1]) + ', ' + str(0.0) + ', ' + str(h[0]) + '};'); f.write('\n')
+            
+
             f.write('Delete {Surface{1}; }'); f.write('\n')
             f.write('Delete {Curve{6}; }'); f.write('\n')
-            f.write('Line(6) = {pt_num+1, pt_num};'); f.write('\n')
-            f.write('Line(7) = {pt_num, 0};'); f.write('\n')
+            f.write('Line(6) = {pt_num+1, 0};'); f.write('\n')
+            # f.write('Line(7) = {pt_num, 0};'); f.write('\n')
             f.write('Line(8) = {pt_num-3,' + str(np.shape(profile)[0]-1) + '};'); f.write('\n')
             f.write('Delete {Curve{1}; Curve{5}; }'); f.write('\n')
             f.write('corner_pt = '+ str(corner_pt) +';'); f.write('\n')
@@ -321,7 +325,8 @@ class Generate_Mesh:
             f.write('Delete {Curve{2}; Curve{4}; }'); f.write('\n')
             f.write('Line(16) = {'+ str(np.shape(profile)[0]+1) +',0};'); f.write('\n')
             
-            f.write('Curve Loop(3) = {6, 7, 9, 11, -12};'); f.write('\n')
+            # f.write('Curve Loop(3) = {6, 7, 9, 11, -12};'); f.write('\n')
+            f.write('Curve Loop(3) = {6, 9, 11, -12};'); f.write('\n')
             f.write('Curve Loop(4) = {10,15,-14,-13,-11};'); f.write('\n')
             f.write('Curve Loop(5) = {9, 10, -8, -3, 16};'); f.write('\n')
             f.write('Plane Surface(1) = {3};'); f.write('\n')
@@ -334,7 +339,7 @@ class Generate_Mesh:
             f.write('Physical Curve("surface", 20) = {6};'); f.write('\n')
             f.write('Physical Curve("overplate_right", 21) = {12};'); f.write('\n')
             f.write('Physical Curve("overplate_base", 22) = {11};'); f.write('\n')
-            f.write('Physical Curve("overplate_left", 23) = {7};'); f.write('\n')
+            # f.write('Physical Curve("overplate_left", 23) = {7};'); f.write('\n')
             f.write('Physical Curve("slab_left", 24) = {16};'); f.write('\n')
             f.write('Physical Curve("slab_overplate_int", 25) = {9};'); f.write('\n')
             f.write('Physical Curve("slab_wedge_int", 27) = {10};'); f.write('\n')
@@ -445,6 +450,13 @@ class Generate_Mesh:
         profile_flipped = self.flip_profile_lr(profile_smooth)
         self.plot_profile(profile_flipped,'Final profile')
         
+        # check if they are all monotonically decreasing
+        if np.argmax(profile_flipped[:,1]) != 0:
+            print('Profile is not monotonically decreasing.')
+            exit()
+        else:
+            print('Profile is monotonically decreasing.')
+
         self.write_slice_to_geo(profile_flipped,h_smooth,N,geo_filename,geo_info,write_msh=write_msh)
 
         if plot_verbose==True:
