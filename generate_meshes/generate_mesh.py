@@ -254,6 +254,8 @@ class Generate_Mesh:
             h_k = self.euclidean_distance(profile[k,:],profile[k-1,:])
             d_along_profile += h_k
             profile_trans[k,0] = d_along_profile
+
+        profile_trans[:,2] -= profile_trans[0,2]
         return profile_trans
 
     def flip_profile_lr(self,profile_in):
