@@ -22,10 +22,11 @@ class Process_Mesh():
         self.v4_vizfile_name = v4_vizfile_name
         self.mesh_dir = mesh_dir
 
-        mesh = Mesh("./%s.xml" %(self.meshfile_name))
+        self.mesh = Mesh("./%s.xml" %(self.meshfile_name))
+        self.subdomains = MeshFunction("size_t", self.mesh,"%s_physical_region.xml" %(self.meshfile_name))
         self.mesh_viz = Mesh("./%s.xml" %(self.vizfile_name))
-        P_T = FiniteElement("CG", mesh.ufl_cell(), self.T_CG_order)
-        self.W_T = FunctionSpace(mesh, P_T)
+        P_T = FiniteElement("CG", self.mesh.ufl_cell(), self.T_CG_order)
+        self.W_T = FunctionSpace(self.mesh, P_T)
         self.T_n = Function(self.W_T)
         self.W_VZ = FunctionSpace(self.mesh_viz,"CG",1)
         self.T_VZ = Function(self.W_VZ)

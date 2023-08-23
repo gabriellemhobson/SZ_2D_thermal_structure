@@ -429,7 +429,8 @@ class PDE_Solver():
         z_top = np.max(overplate_right_coords_y)
 
         # Tbcs
-        Tleft = Expression("Ts + (T0-Ts)*erf(abs(x[1])/(2*sqrt(kappa*slab_age)))", T0 = self.param.Tb, Ts = self.param.Ts, kappa = self.param.kappa_slab, slab_age=self.param.slab_age, degree = self.param.T_CG_order)  # half-space cooling on slab_left
+        # Tleft = Expression("Ts + (T0-Ts)*erf(abs(x[1])/(2*sqrt(kappa*slab_age)))", T0 = self.param.Tb, Ts = self.param.Ts, kappa = self.param.kappa_slab, slab_age=self.param.slab_age, degree = self.param.T_CG_order)  # half-space cooling on slab_left
+        Tleft = Expression("Ts + (T0-Ts)*erf(abs(x[1]-z_top)/(2*sqrt(kappa*slab_age)))", T0 = self.param.Tb, Ts = self.param.Ts, z_top = z_top, kappa = self.param.kappa_slab, slab_age=self.param.slab_age, degree = self.param.T_CG_order)  # half-space cooling on slab_left
         # Tplate = Expression("Ts + (T0-Ts)*abs(x[1] - z_top)/abs(z_base - z_top)", T0 = self.param.Tb, Ts = self.param.Ts, z_top=z_top, z_base = z_base, degree = self.param.T_CG_order) # linear for overplate_right
 
         class TPlate(UserExpression):

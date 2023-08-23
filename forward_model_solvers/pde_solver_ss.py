@@ -474,8 +474,9 @@ class PDE_Solver():
         T_n = Function(self.W_T)
 
         # Tbcs
-        Tleft = Expression("Ts + (T0-Ts)*erf(abs(x[1])/(2*sqrt(kappa*slab_age)))", T0 = self.param.Tb, Ts = self.param.Ts, kappa = self.param.kappa_slab, slab_age=self.param.slab_age, degree = self.param.T_CG_order)  # half-space cooling on slab_left
-        # Tplate = Expression("Ts + (T0-Ts)*abs(x[1] - z_top)/abs(z_base - z_top)", T0 = self.param.Tb, Ts = self.param.Ts, z_top=z_top, z_base = z_base, degree = self.param.T_CG_order) # linear for overplate_right
+        # Tleft = Expression("Ts + (T0-Ts)*erf(abs(x[1])/(2*sqrt(kappa*slab_age)))", T0 = self.param.Tb, Ts = self.param.Ts, kappa = self.param.kappa_slab, slab_age=self.param.slab_age, degree = self.param.T_CG_order)  # half-space cooling on slab_left
+        Tleft = Expression("Ts + (T0-Ts)*erf(abs(x[1]-z_top)/(2*sqrt(kappa*slab_age)))", T0 = self.param.Tb, Ts = self.param.Ts, z_top = self.z_top, kappa = self.param.kappa_slab, slab_age=self.param.slab_age, degree = self.param.T_CG_order)  # half-space cooling on slab_left
+        
 
         class TPlate(UserExpression):
             def __init__(self, param, z_base, z_top, **kwargs):
@@ -528,6 +529,7 @@ class PDE_Solver():
         T_base_exp = Expression("T_base", T_base=T_base_val, degree=self.param.T_CG_order)
         Tbcs.append(DirichletBC(self.W_T, T_base_exp, self.boundaries, self.slab_base))
         Tbcs.append(DirichletBC(self.W_T, Tplate, self.boundaries, self.overplate_right))
+        # Tbcs.append(DirichletBC(self.W_T, Tleft, self.boundaries, self.overplate_left))
         # Tbcs.append(DirichletBC(self.W_T, Constant(self.param.Tb), self.boundaries, self.inflow_wedge))
         Tbcs.append(DirichletBC(self.W_T, T_inflow, self.boundaries, self.inflow_wedge))
         Tbcs.append(DirichletBC(self.W_T, Constant(self.param.Ts), self.boundaries, self.surface))
@@ -705,7 +707,8 @@ class PDE_Solver():
         self.get_depths() # this can be anywhere after meshes are loaded
 
         # compute shear heating
-        H_sh_field = self.get_Hsh_modified(J_idx,D_Field)
+        # H_sh_field = self.get_Hsh_modified(J_idx,D_Field)
+        H_sh_field = self.get_H_sh(J_idx,D_Field)
 
         # first solve isoviscous case
         i = 0
