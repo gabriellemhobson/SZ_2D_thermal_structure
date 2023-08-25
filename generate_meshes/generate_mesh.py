@@ -11,28 +11,29 @@ class Generate_Mesh:
                self.trench_norm, and self.slab_norm.  
     '''
     def __init__(self,fname_slab,fname_trench,constrain,start_line,end_line):
-        print('Loading file', fname_slab)
-        a = np.loadtxt(fname_slab, delimiter=',')
-        af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
+        pass
+        # print('Loading file', fname_slab)
+        # a = np.loadtxt(fname_slab, delimiter=',')
+        # af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
 
-        # constrain slab data to near-trench region
-        if constrain["constrain_TF"] == True:
-            if constrain["less_or_greater"]=='less':
-                af_const = af[af[:,1]<constrain["cut_at_lat"]]
-            elif constrain["less_or_greater"]=='greater':
-                af_const = af[af[:,1]>constrain["cut_at_lat"]]
-            else: 
-                raise ValueError('Must pass in "less" or "greater" to the "less_or_greater" key in constrain.' )
-            af = af_const 
-        self.af = af
-        self.trench_lat_lon, trench_xy = self.load_trench_data(fname_trench,start_line,end_line) 
+        # # constrain slab data to near-trench region
+        # if constrain["constrain_TF"] == True:
+        #     if constrain["less_or_greater"]=='less':
+        #         af_const = af[af[:,1]<constrain["cut_at_lat"]]
+        #     elif constrain["less_or_greater"]=='greater':
+        #         af_const = af[af[:,1]>constrain["cut_at_lat"]]
+        #     else: 
+        #         raise ValueError('Must pass in "less" or "greater" to the "less_or_greater" key in constrain.' )
+        #     af = af_const 
+        # self.af = af
+        # self.trench_lat_lon, trench_xy = self.load_trench_data(fname_trench,start_line,end_line) 
 
-        self.slab_norm = self.normalize_lat_lon_data(self.af)
+        # self.slab_norm = self.normalize_lat_lon_data(self.af)
 
-        # normalize trench data also
-        self.trench_norm = np.zeros(np.shape(self.trench_lat_lon))
-        for k in range((len(self.trench_lat_lon))):
-            self.trench_norm[k] = self.normalize_point(self.af,self.trench_lat_lon[k,:])
+        # # normalize trench data also
+        # self.trench_norm = np.zeros(np.shape(self.trench_lat_lon))
+        # for k in range((len(self.trench_lat_lon))):
+        #     self.trench_norm[k] = self.normalize_point(self.af,self.trench_lat_lon[k,:])
 
     def normalize_lat_lon_data(self,af):
         data = copy.deepcopy(af) # this should be unnecessary

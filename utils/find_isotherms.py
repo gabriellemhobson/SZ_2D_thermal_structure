@@ -40,7 +40,8 @@ class Find_Isotherms():
         D = []
         for inter in iso_info:
             X_cut = X[X<=inter[0]]
-            Y_cut = Y[Y>=inter[1]]
+            # Y_cut = Y[Y>=inter[1]]
+            Y_cut = Y[0:X_cut.shape[0]]
             diff_X = np.append(X_cut[1:] - X_cut[0:-1],np.abs(inter[0] - X_cut[-1]))
             diff_Y = np.append(Y_cut[1:] - Y_cut[0:-1],np.abs(inter[1] - Y_cut[-1]))
             D.append(np.sum(np.sqrt(diff_X**2 - diff_Y**2)))

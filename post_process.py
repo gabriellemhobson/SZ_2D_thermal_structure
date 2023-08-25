@@ -149,6 +149,22 @@ for dir in jobs_log["path"]:
     ax2.invert_yaxis()
     plt.savefig("T_vs_X_and_Y.png")
 
+# 
+II = np.argmin(Y-210.0)
+print(Y[0:II])
+# T_slab_norm = np.sqrt( np.sum(T[0:II]**2)/ T[0:II].shape[0] )
+T_slab_norm = np.sqrt( np.mean(T[0:II]**2) )
+print('norm of slab interface T to 210 km depth', np.linalg.norm(T[0:II]))
+print('T_slab_norm',T_slab_norm)
+
+# load downsampled T result
+
+
+
+
+
+exit()
+
 # isotherm variation plot
 font_size = 26
 alpha = 1.0
