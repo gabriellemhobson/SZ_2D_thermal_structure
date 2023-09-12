@@ -702,7 +702,6 @@ class PDE_Solver():
                     MAG.append(mag.vector()[v2d[v.index()]])
         print('Max magnitude along interface: ', np.max(MAG))
 
-        ufile_pvd << u_n_slab
         # slab_sub = SubMesh(self.mesh, self.subdomains, 17)
         # wedge_sub = SubMesh(self.mesh, self.subdomains, 18)
         # overplate_sub = SubMesh(self.mesh, self.subdomains, 19)
@@ -715,9 +714,7 @@ class PDE_Solver():
         # oplate_sub_pvd << overplate_sub
 
         u_n,collect_bc = self.apply_pc_and_trans(u_n_slab,slab_d_field)
-        ufile_pvd << u_n 
         J_idx = self.compute_jump(u_n_slab,u_n,I_Field)
-        ufile_pvd << u_n 
 
         self.get_depths() # this can be anywhere after meshes are loaded
 
@@ -727,11 +724,8 @@ class PDE_Solver():
         # first solve isoviscous case
         i = 0
         while i<self.param.n_picard_it:
-            ufile_pvd << u_n
             u_n = self.solver_stokes(eta_wedge,u_n,collect_bc,I_Field)
-            ufile_pvd << u_n
             T_n, res_T = self.solver_adv_diff(u_n,H_sh_field)
-            ufile_pvd << u_n
             # tfile_pvd << T_n
             print("Picard iteration: ", i)
             # print('residual u: {0}'.format(res_u))
