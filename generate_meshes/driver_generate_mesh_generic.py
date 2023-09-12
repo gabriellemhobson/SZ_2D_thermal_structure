@@ -149,7 +149,6 @@ def parse_constraints(p):
 
 def parse_beginning_strings(p):
   p.add_argument('--slab_thickness',  type=float, default = 50.0, required=False, help="Thickness of the slab (km)")
-  p.add_argument('--overplate_notch', type=float, default = 0.5, required=False, help="---- (km)")
   p.add_argument('--domain_width_x',  type=float, default = 660.0, required=False, help="Width of the domain (km)")
   p.add_argument('--extension_x',     type=float, default = 50.0, required=False, help="--- (km)")
   p.add_argument('--z_in_out',        type=float, default = 150.0, required=False, help="Depth (km) of inflow/outflow transition on wedge side")
@@ -162,8 +161,6 @@ def generate_input_options(a):
   
   beginning_strings.append(
       'slab_thickness = DefineNumber[ {}, Name "Parameters/slab_thickness" ];'.format(a.slab_thickness) )
-  beginning_strings.append(
-      'overplate_notch = DefineNumber[ {}, Name "Parameters/overplate_notch" ];'.format(a.overplate_notch) )
   beginning_strings.append(
       'domain_width_x = DefineNumber[ {}, Name "Parameters/domain_width_x" ];'.format(a.domain_width_x) )
   beginning_strings.append(
