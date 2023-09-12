@@ -11,29 +11,28 @@ class Generate_Mesh:
                self.trench_norm, and self.slab_norm.  
     '''
     def __init__(self,fname_slab,fname_trench,constrain,start_line,end_line):
-        pass
-        # print('Loading file', fname_slab)
-        # a = np.loadtxt(fname_slab, delimiter=',')
-        # af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
+        print('Loading file', fname_slab)
+        a = np.loadtxt(fname_slab, delimiter=',')
+        af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
 
-        # # constrain slab data to near-trench region
-        # if constrain["constrain_TF"] == True:
-        #     if constrain["less_or_greater"]=='less':
-        #         af_const = af[af[:,1]<constrain["cut_at_lat"]]
-        #     elif constrain["less_or_greater"]=='greater':
-        #         af_const = af[af[:,1]>constrain["cut_at_lat"]]
-        #     else: 
-        #         raise ValueError('Must pass in "less" or "greater" to the "less_or_greater" key in constrain.' )
-        #     af = af_const 
-        # self.af = af
-        # self.trench_lat_lon, trench_xy = self.load_trench_data(fname_trench,start_line,end_line) 
+        # constrain slab data to near-trench region
+        if constrain["constrain_TF"] == True:
+            if constrain["less_or_greater"]=='less':
+                af_const = af[af[:,1]<constrain["cut_at_lat"]]
+            elif constrain["less_or_greater"]=='greater':
+                af_const = af[af[:,1]>constrain["cut_at_lat"]]
+            else: 
+                raise ValueError('Must pass in "less" or "greater" to the "less_or_greater" key in constrain.' )
+            af = af_const 
+        self.af = af
+        self.trench_lat_lon, trench_xy = self.load_trench_data(fname_trench,start_line,end_line) 
 
-        # self.slab_norm = self.normalize_lat_lon_data(self.af)
+        self.slab_norm = self.normalize_lat_lon_data(self.af)
 
-        # # normalize trench data also
-        # self.trench_norm = np.zeros(np.shape(self.trench_lat_lon))
-        # for k in range((len(self.trench_lat_lon))):
-        #     self.trench_norm[k] = self.normalize_point(self.af,self.trench_lat_lon[k,:])
+        # normalize trench data also
+        self.trench_norm = np.zeros(np.shape(self.trench_lat_lon))
+        for k in range((len(self.trench_lat_lon))):
+            self.trench_norm[k] = self.normalize_point(self.af,self.trench_lat_lon[k,:])
 
     def normalize_lat_lon_data(self,af):
         data = copy.deepcopy(af) # this should be unnecessary
@@ -268,8 +267,14 @@ class Generate_Mesh:
             print('Profile must be flipped so it descends left to right.')
             profile[:,0] *= -1
         return profile
+    
+    def get_point_normal(self,profile,slab_thickness):
+        df = (profile[1,:] - profile[0,:])
+        dn = df[::-1]*np.array([1,-1])
+        pn = (slab_thickness/np.linalg.norm(dn))*dn
+        return pn
 
-    def write_slice_to_geo(self,profile,h,N,filename,geo_info,write_msh):
+    def write_slice_to_geo(self,profile,h,N,pn,filename,geo_info,write_msh):
         print('profile',np.shape(profile))
         print('Writing to file: ',filename)
 
@@ -288,7 +293,8 @@ class Generate_Mesh:
             spline_line = 'BSpline(1) = ' + str({*np.arange(0,np.shape(profile)[0])}) + ';'
             f.write(spline_line); f.write('\n')
 
-            line = 'Point(' + str(int(k+1)) + ') = {' + str(profile[0,0]) + ', ' + str(profile[0,1]) + '-slab_thickness, ' + str(0.0) + ', ' + str(h[0]) + '};'
+            # line = 'Point(' + str(int(k+1)) + ') = {' + str(profile[0,0]) + ', ' + str(profile[0,1]) + '-slab_thickness, ' + str(0.0) + ', ' + str(h[0]) + '};'
+            line = 'Point(' + str(int(k+1)) + ') = {' + str(pn[0]) + ', ' + str(pn[1]) + ', ' + str(0.0) + ', ' + str(h[0]) + '};'
             f.write(line); f.write('\n')
             f.write('BSpline(2) = {' + str(k+1) + ',0};'); f.write('\n')
             f.write('Wire(1) = {1};'); f.write('\n')
@@ -421,7 +427,7 @@ class Generate_Mesh:
         print('dimension', xy.shape)
         return boundaries, xy
 
-    def run_generate_mesh(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,plot_verbose=False,write_msh=False):
+    def run_generate_mesh(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,slab_thickness,plot_verbose=False,write_msh=False):
 
         start_point = self.normalize_point(self.af,start_point_latlon)
         # end_point_xy = trench_normal(point,scaling,trench_xy)
@@ -458,7 +464,10 @@ class Generate_Mesh:
         else:
             print('Profile is monotonically decreasing.')
 
-        self.write_slice_to_geo(profile_flipped,h_smooth,N,geo_filename,geo_info,write_msh=write_msh)
+        # compute the point normal to the end of the slab interface
+        pn = self.get_point_normal(profile_flipped,slab_thickness)
+
+        self.write_slice_to_geo(profile_flipped,h_smooth,N,pn,geo_filename,geo_info,write_msh=write_msh)
 
         if plot_verbose==True:
 

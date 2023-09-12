@@ -51,7 +51,7 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
 
         geo_filename = slab_id + '_profile_{}.geo'.format(label)
         
-        profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,plot_verbose=False,write_msh=args.write_msh)
+        profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=False,write_msh=args.write_msh)
         
         fname_profile = slab_id + '_profile_{}.xy'.format(label) # Avoid using `z` as last character otherwise numpy will zip the file
         fname_profile = os.path.join(output_path, fname_profile)

@@ -156,6 +156,22 @@ class PDE_Solver():
         beta = Constant(20)
         h = MaxCellEdgeLength(self.mesh) # CellSize(mesh)
         n = FacetNormal(self.mesh)
+        t = as_vector((n[1],-n[0]))
+
+        # V = VectorFunctionSpace(self.mesh, "CG", 1)
+        # u = TrialFunction(V)
+        # v = TestFunction(V)
+        # a = inner(u,v)*self.ds(29)
+        # l = inner(-t, v)*self.ds(29)
+        # A = assemble(a, keep_diagonal=True)
+        # L = assemble(l)
+
+        # A.ident_zeros()
+        # nh = Function(V)
+
+        # solve(A, nh.vector(), L)
+        # File("tangent.pvd") << nh
+        # exit()
 
         def symgrad(uu):
             return 0.5*(grad(uu) + (grad(uu)).T)
@@ -182,31 +198,43 @@ class PDE_Solver():
         sigma_n_up = dot(sig(self.phi_1(sgn),self.phi_2(sgn)), n(sgn)) # traction
         sigma_n_vq = dot(sig(self.v_1(sgn),self.v_2(sgn)), n(sgn)) # traction
 
+        # nitsche constrains u dot n, tangential shear stress is zero
         a_nitsche = (
                     - inner(dot(sigma_n_up, n(sgn)),  dot(self.v_1(sgn), n(sgn)))
                     - inner(dot(sigma_n_vq, n(sgn)),  dot(self.phi_1(sgn), n(sgn)))
                     + beta/h(sgn)*inner(dot(self.phi_1(sgn), n(sgn)), dot(self.v_1(sgn), n(sgn))) )
 
+        # constrains u dot n and u dot t 
+        a_nitsche_U = ( beta/h(sgn)*dot(self.phi_1(sgn), self.v_1(sgn)))
+
         # upper boundary
-        # a += a_nitsche * self.dS(25) + a_nitsche * self.dS(26) + a_nitsche * self.dS(27) 
-        a += a_nitsche * self.dS(25) + a_nitsche * self.dS(27) 
+        # this will change to a_nitsche_U
+        a += a_nitsche_U * self.dS(25) + a_nitsche_U * self.dS(27) 
 
         a_nitsche_exterior_boundary = (
                     - inner( nsn(self.phi_1,self.phi_2,n),  dot(self.v_1, n))
                     - inner( nsn(self.v_1,self.v_2,n),  dot(self.phi_1, n))
                     + beta/h*(dot(self.phi_1, n) * dot(self.v_1, n)) )
 
-        # lower boundary
-        a += a_nitsche_exterior_boundary * self.ds(29) # slab base
+        a_nitsche_exterior_boundary_U = beta/h*dot(self.phi_1, self.v_1)
+
+        # lower slab boundary
+        a += a_nitsche_exterior_boundary_U * self.ds(29) # slab base
 
         # inflow
-        a += a_nitsche_exterior_boundary * self.ds(24)
+        a += a_nitsche_exterior_boundary * self.ds(24) # inflow
+        a += a_nitsche_exterior_boundary * self.ds(28) # outflow
+
+        # upper / lower linear form
+        L += ( beta/h(sgn)*(self.param.slab_vel * dot(self.v_1(sgn), t(sgn))) )*self.dS(25) 
+        L += ( beta/h(sgn)*(self.param.slab_vel * dot(self.v_1(sgn), t(sgn))) )*self.dS(27)
+        L += ( beta/h*(self.param.slab_vel * dot(self.v_1, -t)) )*self.ds(29)  # tangents go the other direction so -t is necessary
+
+        # inflow outflow linear form
         g_dot_n = Expression("-vel",vel=self.param.slab_vel,degree=1) 
         L += beta/h*(g_dot_n * dot(self.v_1, n)) * self.ds(24)
         L += - ( nsn(self.v_1,self.v_2,n) *  g_dot_n) * self.ds(24)
-
-        # outflow
-        a += a_nitsche_exterior_boundary * self.ds(28)
+        
         g_dot_n = Expression("vel",vel=self.param.slab_vel,degree=1)
         L += beta/h*(g_dot_n * dot(self.v_1, n)) * self.ds(28)
         L += - ( nsn(self.v_1,self.v_2,n) *  g_dot_n) * self.ds(28)
@@ -219,6 +247,9 @@ class PDE_Solver():
             A = assemble(a)
             b = assemble(L)
             solver = PETScKrylovSolver()
+            # for bc in bcs:
+            #     bc.apply(A)
+            #     bc.apply(b)
             # solver.get_options_prefix()
             solver.set_operator(A)
             solver.set_from_options()
@@ -656,6 +687,22 @@ class PDE_Solver():
         eta_slab,eta_wedge = self.isoviscous()
         u_n_slab = self.solve_slab_flow(eta_slab,eta_wedge)
 
+        ux=u_n_slab.sub(0,deepcopy=True)
+        uy=u_n_slab.sub(1,deepcopy=True)
+        mag_exp = Expression("sqrt( pow(ux,2) + pow(uy,2) )", degree=1, ux=ux, uy=uy)
+        W_mag = FunctionSpace(self.mesh, FiniteElement("CG", self.mesh.ufl_cell(), 1))
+        mag = self.project_gmh(mag_exp,W_mag)
+        # mag_pvd = File(os.path.join(self.output_dir,"magnitude.pvd"))
+        v2d = vertex_to_dof_map(W_mag)
+        MAG = []
+        for facet in facets(self.mesh):
+            if (self.boundaries.array()[facet.index()] == self.slab_wedge_int) \
+                or (self.boundaries.array()[facet.index()] == self.slab_overplate_int):
+                for v in vertices(facet):
+                    MAG.append(mag.vector()[v2d[v.index()]])
+        print('Max magnitude along interface: ', np.max(MAG))
+
+        ufile_pvd << u_n_slab
         # slab_sub = SubMesh(self.mesh, self.subdomains, 17)
         # wedge_sub = SubMesh(self.mesh, self.subdomains, 18)
         # overplate_sub = SubMesh(self.mesh, self.subdomains, 19)
@@ -668,8 +715,9 @@ class PDE_Solver():
         # oplate_sub_pvd << overplate_sub
 
         u_n,collect_bc = self.apply_pc_and_trans(u_n_slab,slab_d_field)
-
+        ufile_pvd << u_n 
         J_idx = self.compute_jump(u_n_slab,u_n,I_Field)
+        ufile_pvd << u_n 
 
         self.get_depths() # this can be anywhere after meshes are loaded
 
@@ -679,9 +727,11 @@ class PDE_Solver():
         # first solve isoviscous case
         i = 0
         while i<self.param.n_picard_it:
+            ufile_pvd << u_n
             u_n = self.solver_stokes(eta_wedge,u_n,collect_bc,I_Field)
-            # ufile_pvd << u_n
+            ufile_pvd << u_n
             T_n, res_T = self.solver_adv_diff(u_n,H_sh_field)
+            ufile_pvd << u_n
             # tfile_pvd << T_n
             print("Picard iteration: ", i)
             # print('residual u: {0}'.format(res_u))

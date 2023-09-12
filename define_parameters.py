@@ -11,6 +11,7 @@ class Parameters():
         self.Eta_star = 1e21 # Pa s, characteristic viscosity
         
         # set default values for physical parameters
+        # self.slab_vel = 3.53553*self.cmyr_to_ms/self.Vstar
         self.slab_vel = 5.0*self.cmyr_to_ms/self.Vstar
         self.Ts = 273 # K, temp at surface
         self.Tb = 1573 # K, temp at inflow boundary of wedge
