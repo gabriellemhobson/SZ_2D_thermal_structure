@@ -27,7 +27,7 @@ parser.add_argument('--viscosity_type', type=str, required=True, help="Type of v
 parser.add_argument('--solver', type=str, default="ss", required=False, help="Type of solver, must be 'ss' or 'time_dep'. ")
 parser.add_argument('--tol', type=float, default=1e-5, required=False, help="Residuals for pde solutions in forward model solve must be below this tolerance.")
 parser.add_argument('--n_picard_it', type=int, default=10, required=False, help="Maximum number of picard iterations.")
-parser.add_argument('--n_iters', type=int, default=10, required=False, help="Maximum number of iterations.")
+parser.add_argument('--n_iters', type=int, default=90, required=False, help="Maximum number of iterations.")
 parser.add_argument('--diff_tol', type=float, default=1e-1, required=False, help="Tolerance for reaching a converged solution.")
 parser.add_argument('--T_CG_order', type=int, default=2, required=False, help="Order of CG elements for temperature.")
 parser.parse_known_args(namespace=args)
