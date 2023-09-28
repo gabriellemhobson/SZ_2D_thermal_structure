@@ -474,7 +474,7 @@ class PDE_Solver():
         T_n = Function(self.W_T)
 
         # Tbcs
-        Tleft = Expression("Ts + (T0-Ts)*erf(abs(x[1])/(2*sqrt(kappa*slab_age)))", T0 = self.param.Tb, Ts = self.param.Ts, kappa = self.param.kappa_slab, slab_age=self.param.slab_age, degree = self.param.T_CG_order)  # half-space cooling on slab_left
+        Tleft = Expression("Ts + (T0-Ts)*erf(abs(2*x[1])/(2*sqrt(kappa*slab_age)))", T0 = self.param.Tb, Ts = self.param.Ts, kappa = self.param.kappa_slab, slab_age=self.param.slab_age, degree = self.param.T_CG_order)  # half-space cooling on slab_left
         # Tplate = Expression("Ts + (T0-Ts)*abs(x[1] - z_top)/abs(z_base - z_top)", T0 = self.param.Tb, Ts = self.param.Ts, z_top=z_top, z_base = z_base, degree = self.param.T_CG_order) # linear for overplate_right
 
         class TPlate(UserExpression):
@@ -806,66 +806,48 @@ class PDE_Solver():
 
 
 
-        # # Comparing to van Keken et al 2008 benchmark
+        # Comparing to van Keken et al 2008 benchmark
 
-        # ''' Temperature at 60, 60 km. '''
-        # values = np.array([0.0])
-        # T_n.eval(values, np.array([60.0,-60.0],dtype=float))
-        # print("Slab T at (60, -60 km)", values[0] )
+        ''' Temperature at 60, 60 km. '''
+        values = np.array([0.0])
+        T_n.eval(values, np.array([60.0,-60.0],dtype=float))
+        print("Slab T (K) at (60, -60 km)", values[0])
+        print("Slab T (C) at (60, -60 km)", values[0]-273)
 
-        # ''' Trying to match what is written in van Keken et al. '''
-        # mesh_analysis = RectangleMesh(Point(0.0,0.0), Point(660.0,-600.0), 110, 100)
-        # W_analysis = FunctionSpace(mesh_analysis, 'CG', 1)
-        # # T_n_analysis = interpolate(Expression('pow(T,2)', T=T_n, degree=1), W_analysis)
-        # T_n.set_allow_extrapolation(True)
-        # T_n_analysis = interpolate(T_n, W_analysis)
-        # T_n_analysis.vector()[T_n_analysis.vector()>1573] = 1573
-        # t_analysis_pvd = File(os.path.join(self.output_dir,"temperature_interp.pvd"))
-        # t_analysis_pvd << T_n_analysis
-        # # v2d = vertex_to_dof_map(W_analysis)
-        # # mesh_analysis_cells = mesh_analysis.cells()
-        # # result = np.array(T_n_analysis.vector())
-        # # result = result[v2d]
-        # # title = "Benchmark 1 ss T, interpolated to 6 km grid"
-        # # png_name = "T_ss_interp.png"
-
-        # values = np.array([0.0])
-        # T_n_analysis.eval(values, np.array([60.0,-60.0],dtype=float))
-        # print("Slab T at (60, -60 km) after interpolation =", values[0] )
-
-        # import matplotlib.pyplot as plt
-        # plt.figure()
-        # T_wedge = []; XP = []; YP = [];
+        ''' Trying to match what is written in van Keken et al. '''
+        mesh_analysis = RectangleMesh(Point(0.0,0.0), Point(660.0,-600.0), 110, 100)
+        W_analysis = FunctionSpace(mesh_analysis, 'CG', 1)
+        # T_n_analysis = interpolate(Expression('pow(T,2)', T=T_n, degree=1), W_analysis)
+        T_n.set_allow_extrapolation(True)
+        T_n_analysis = interpolate(T_n, W_analysis)
+        T_n_analysis.vector()[T_n_analysis.vector()>1573] = 1573
+        t_analysis_pvd = File(os.path.join(self.output_dir,"temperature_interp.pvd"))
+        t_analysis_pvd << T_n_analysis
         # v2d = vertex_to_dof_map(W_analysis)
-        # for v in vertices(mesh_analysis):
-        #     xp = v.point().x()
-        #     yp = v.point().y()
-        #     if xp >= 54.0 and xp <= 120.0 and yp <= -54.0 and yp >= -120.0 and np.abs(yp) <= xp:
-        #         XP.append(xp); YP.append(yp)
-        #         T_wedge.append(T_n_analysis.vector()[v2d[v.index()]])
+        # mesh_analysis_cells = mesh_analysis.cells()
+        # result = np.array(T_n_analysis.vector())
+        # result = result[v2d]
+        # title = "Benchmark 1 ss T, interpolated to 6 km grid"
+        # png_name = "T_ss_interp.png"
+
+        values = np.array([0.0])
+        T_n_analysis.eval(values, np.array([60.0,-60.0],dtype=float))
+        print("Slab T (K) at (60, -60 km) after interpolation =", values[0] )
+        print("Slab T (C) at (60, -60 km) after interpolation =", values[0]-273 )
+
+        import matplotlib.pyplot as plt
+        plt.figure()
+        T_wedge = []; XP = []; YP = [];
+        v2d = vertex_to_dof_map(W_analysis)
+        for v in vertices(mesh_analysis):
+            xp = v.point().x()
+            yp = v.point().y()
+            if xp >= 54.0 and xp <= 120.0 and yp <= -54.0 and yp >= -120.0 and np.abs(yp) <= xp:
+                XP.append(xp); YP.append(yp)
+                T_wedge.append(T_n_analysis.vector()[v2d[v.index()]])
         # plt.scatter(XP,YP,c=T_wedge)
         # plt.show()
 
         # print('Norm of wedge temps, 54 to 120 km depth', np.sqrt(np.sum(np.array(T_wedge)**2)/len(T_wedge))    )
-
-        # result = np.reshape(result,(101,111))
-        # print(np.shape(result))
-        # print('T_11,11', result[11,11])
-
-        # '''Slab-wedge interface temperature. '''
-        # Tii = np.diag(result[:,0:np.shape(result)[0]])
-        # print(np.shape(Tii[0:36]))
-        # L2_slab = np.sqrt( np.sum(Tii[0:36]**2) / 36 )
-        # print('L2_slab', L2_slab)
-
-        # ''' Integrating in the corner of the wedge. '''
-        # T_corner = 0.0
-        # count = 0
-        # for i in range((13)):
-        #     for j in range(9,9+i):
-        #         # print(101-23+i,j)
-        #         T_corner += result[i,j]**2
-        #         count += 1
-        # print('count', count)
-        # L2_wedge = np.sqrt( T_corner / 78 )
-        # print('L2_wedge', L2_wedge)
+        print('Norm of wedge temps, 54 to 120 km depth (K)', np.sqrt(np.mean(np.array(T_wedge)**2))    )
+        print('Norm of wedge temps, 54 to 120 km depth (C)', np.sqrt(np.mean(np.array(T_wedge)**2))-273    )

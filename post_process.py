@@ -150,18 +150,12 @@ for dir in jobs_log["path"]:
     plt.savefig("T_vs_X_and_Y.png")
 
 # 
-II = np.argmin(Y-210.0)
-print(Y[0:II])
+II = np.argmin(np.abs(Y+210.0))
 # T_slab_norm = np.sqrt( np.sum(T[0:II]**2)/ T[0:II].shape[0] )
 T_slab_norm = np.sqrt( np.mean(T[0:II]**2) )
-print('norm of slab interface T to 210 km depth', np.linalg.norm(T[0:II]))
-print('T_slab_norm',T_slab_norm)
-
-# load downsampled T result
-
-
-
-
+# print('norm of slab interface T to 210 km depth', np.linalg.norm(T[0:II]))
+print('T_slab_norm (K)',T_slab_norm)
+print('T_slab_norm (C)',T_slab_norm-273.0)
 
 exit()
 
