@@ -25,7 +25,7 @@ class Plotting():
         ax1.set_aspect('equal')
         cfill = ax1.tricontourf(tri_mesh, result, levels=200, cmap=cmap_name)
         cb = plt.colorbar(cfill, ax=ax1, fraction=0.025)
-        cb.set_label(label='T (K)', fontsize=font_size)
+        cb.set_label(label='T (C)', fontsize=font_size)
         # cfill.set_clim(0,0.0025)
         cb.ax.tick_params(labelsize=font_size)
         contours = ax1.tricontour(tri_mesh, result, levels=self.level_vals, colors='k')
@@ -40,17 +40,17 @@ class Plotting():
         fig = plt.title(self.title, fontsize=font_size)
 
         # colors = list(mcl.TABLEAU_COLORS.keys())
-        colors = ['tab:green', 'tab:orange', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan', 'tab:blue', 'tab:red']
-        if self.iso_info is not None:
-            for k in range(len(self.iso_info)):
-                if round(self.iso_info[k][2],2) > 600.0:
-                    label_str = 'Downdip limit: x = '
-                else: 
-                    label_str = 'Updip limit: x = '
-                plt.scatter(self.iso_info[k][0], self.iso_info[k][1],c=colors[k],marker='*', s=600, zorder=2, \
-                    label=label_str+str(round(self.iso_info[k][0],2))+' km, y = '\
-                        +str(round(self.iso_info[k][1],2))+' km, T = '\
-                        +str(round(self.iso_info[k][2],2))+' K')
+        # colors = ['tab:green', 'tab:orange', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan', 'tab:blue', 'tab:red']
+        # if self.iso_info is not None:
+        #     for k in range(len(self.iso_info)):
+        #         if round(self.iso_info[k][2],2) > 600.0:
+        #             label_str = 'Downdip limit: x = '
+        #         else: 
+        #             label_str = 'Updip limit: x = '
+        #         plt.scatter(self.iso_info[k][0], self.iso_info[k][1],c=colors[k],marker='*', s=600, zorder=2, \
+        #             label=label_str+str(round(self.iso_info[k][0],2))+' km, y = '\
+        #                 +str(round(self.iso_info[k][1],2))+' km, T = '\
+        #                 +str(round(self.iso_info[k][2],2))+' K')
             # plt.scatter(self.iso_info[1][0], self.iso_info[1][1],c='tab:orange',marker='*', s=100, zorder=3, \
             #     label='Downdip limit: x = '+str(round(self.iso_info[1][0],2))+' km, y = '\
             #         +str(round(self.iso_info[1][1],2))+' km, T = '\
@@ -58,8 +58,8 @@ class Plotting():
         plt.legend(loc='lower left',fontsize=font_size)
         plt.xticks(fontsize=font_size);
         plt.yticks(fontsize=font_size);
-        plt.xlim([0,350])
-        plt.ylim([-150,0])
+        plt.xlim([0,220])
+        plt.ylim([-200,0])
         # plt.rcParams["font.family"] = "Times"
         plt.savefig(self.png_name)
         plt.close("all")

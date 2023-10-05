@@ -120,12 +120,13 @@ for dir in jobs_log["path"]:
     f.close()
 
     title = r"$T_{FOM}$"
-    png_name = os.path.join(dir,"temperature.png")
-    level_vals = (423,623,800,1000,1200,1400)
+    png_name = os.path.join(dir,"temperature_C.png")
+    # level_vals = (423,623,800,1000,1200,1400)
     # level_vals = (150,350,450,600,800,1000,1200)
+    level_vals = (100,200,300,400,500,600,700,800,900,1000,1100,1200)
     # my_plotting_tool = plotting.Plotting(title,png_name,level_vals,iso_info)
     my_plotting_tool = plotting.Plotting(title,png_name,level_vals)
-    tri_mesh = my_plotting_tool.plot_result(coords_x,coords_y,mesh_cells,result)
+    tri_mesh = my_plotting_tool.plot_result(coords_x,coords_y,mesh_cells,result-273)
 
     # save the tri_mesh so it can be used elsewhere
     tri_mesh._cpp_triangulation = None
