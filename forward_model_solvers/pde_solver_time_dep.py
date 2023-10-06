@@ -155,6 +155,7 @@ class PDE_Solver():
         beta = Constant(20)
         h = MaxCellEdgeLength(self.mesh) # CellSize(mesh)
         n = FacetNormal(self.mesh)
+        t = as_vector((n[1],-n[0]))
 
         def symgrad(uu):
             return 0.5*(grad(uu) + (grad(uu)).T)
@@ -186,26 +187,37 @@ class PDE_Solver():
                     - inner(dot(sigma_n_vq, n(sgn)),  dot(self.phi_1(sgn), n(sgn)))
                     + beta/h(sgn)*inner(dot(self.phi_1(sgn), n(sgn)), dot(self.v_1(sgn), n(sgn))) )
 
+        # constrains u dot n and u dot t 
+        a_nitsche_U = ( beta/h(sgn)*dot(self.phi_1(sgn), self.v_1(sgn)))
+
         # upper boundary
         # a += a_nitsche * self.dS(25) + a_nitsche * self.dS(26) + a_nitsche * self.dS(27) 
-        a += a_nitsche * self.dS(25) + a_nitsche * self.dS(27) 
+        a += a_nitsche_U * self.dS(25) + a_nitsche_U * self.dS(27) 
 
         a_nitsche_exterior_boundary = (
                     - inner( nsn(self.phi_1,self.phi_2,n),  dot(self.v_1, n))
                     - inner( nsn(self.v_1,self.v_2,n),  dot(self.phi_1, n))
                     + beta/h*(dot(self.phi_1, n) * dot(self.v_1, n)) )
 
-        # lower boundary
-        a += a_nitsche_exterior_boundary * self.ds(29) # slab base
+        a_nitsche_exterior_boundary_U = beta/h*dot(self.phi_1, self.v_1)
 
-        # inflow
+        # lower boundary
+        a += a_nitsche_exterior_boundary_U * self.ds(29) # slab base
+
+        # inflow and outflow
         a += a_nitsche_exterior_boundary * self.ds(24)
+        a += a_nitsche_exterior_boundary * self.ds(28)
+
+        # upper / lower linear form
+        L += ( beta/h(sgn)*(self.param.slab_vel * dot(self.v_1(sgn), t(sgn))) )*self.dS(25) 
+        L += ( beta/h(sgn)*(self.param.slab_vel * dot(self.v_1(sgn), t(sgn))) )*self.dS(27)
+        L += ( beta/h*(self.param.slab_vel * dot(self.v_1, -t)) )*self.ds(29)  # tangents go the other direction so -t is necessary
+
+        # inflow outflow linear form
         g_dot_n = Expression("-vel",vel=self.param.slab_vel,degree=1) 
         L += beta/h*(g_dot_n * dot(self.v_1, n)) * self.ds(24)
         L += - ( nsn(self.v_1,self.v_2,n) *  g_dot_n) * self.ds(24)
 
-        # outflow
-        a += a_nitsche_exterior_boundary * self.ds(28)
         g_dot_n = Expression("vel",vel=self.param.slab_vel,degree=1)
         L += beta/h*(g_dot_n * dot(self.v_1, n)) * self.ds(28)
         L += - ( nsn(self.v_1,self.v_2,n) *  g_dot_n) * self.ds(28)
@@ -667,7 +679,7 @@ class PDE_Solver():
         # first solve isoviscous case
         eta_slab,eta_wedge = self.isoviscous()
         u_n_slab = self.solve_slab_flow(eta_slab,eta_wedge)
-
+        File("u_n_slab.pvd") << u_n_slab
         # slab_sub = SubMesh(self.mesh, self.subdomains, 17)
         # wedge_sub = SubMesh(self.mesh, self.subdomains, 18)
         # overplate_sub = SubMesh(self.mesh, self.subdomains, 19)
