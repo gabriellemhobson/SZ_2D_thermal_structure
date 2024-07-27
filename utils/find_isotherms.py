@@ -19,6 +19,7 @@ class Find_Isotherms():
 
     def locate_isotherm_intersection(self,X,Y,T,ref,tol):
         lst = []
+        miss = 0
         for t in self.iso_vals:
             for k in range(len(T)-1):
                 if (t >= T[k]) and (t < T[k+1]):
@@ -31,9 +32,10 @@ class Find_Isotherms():
                         lst.append([xs[I], ys[I], Ts[I]])
                     else:
                         print('Cannot find isotherm to given tol with that refinement level. Please increase ref value or drop tol value.')
+                        miss += 1
         if len(self.iso_vals) == 1:
             lst = [lst]
-        return lst
+        return lst, miss
 
     def along_slab_distance(self,X,Y,T,iso_info):
         # X = np.array(X); Y = np.array(Y)

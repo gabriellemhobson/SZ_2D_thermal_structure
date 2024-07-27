@@ -56,6 +56,8 @@ class Subduction(pm.ParametricModel):
             fp.write('from forward_model_solvers import pde_solver_ss as pde_solver \n')
         elif self.input_dict['solver'] == 'time_dep':
             fp.write('from forward_model_solvers import pde_solver_time_dep as pde_solver \n')
+        elif self.input_dict['solver'] == 'line_source':
+            fp.write('from forward_model_solvers import pde_solver_ss_line_source as pde_solver \n')
         else:
             raise ValueError('Solver type must be "ss" or "time_dep". Exiting.')
         fp.write('import define_parameters \n')

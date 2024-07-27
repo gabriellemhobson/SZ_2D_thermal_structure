@@ -58,8 +58,8 @@ class Plotting():
         plt.legend(loc='lower left',fontsize=font_size)
         plt.xticks(fontsize=font_size);
         plt.yticks(fontsize=font_size);
-        plt.xlim([0,350])
-        plt.ylim([-150,0])
+        # plt.xlim([0,350])
+        # plt.ylim([-150,0])
         # plt.rcParams["font.family"] = "Times"
         plt.savefig(self.png_name)
         plt.close("all")

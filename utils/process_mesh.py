@@ -22,10 +22,10 @@ class Process_Mesh():
         self.v4_vizfile_name = v4_vizfile_name
         self.mesh_dir = mesh_dir
 
-        mesh = Mesh("./%s.xml" %(self.meshfile_name))
+        self.mesh = Mesh("./%s.xml" %(self.meshfile_name))
         self.mesh_viz = Mesh("./%s.xml" %(self.vizfile_name))
-        P_T = FiniteElement("CG", mesh.ufl_cell(), self.T_CG_order)
-        self.W_T = FunctionSpace(mesh, P_T)
+        P_T = FiniteElement("CG", self.mesh.ufl_cell(), self.T_CG_order)
+        self.W_T = FunctionSpace(self.mesh, P_T)
         self.T_n = Function(self.W_T)
         self.W_VZ = FunctionSpace(self.mesh_viz,"CG",1)
         self.T_VZ = Function(self.W_VZ)
@@ -81,6 +81,15 @@ class Process_Mesh():
         lw.write(x,os.path.join(self.mesh_dir,"coords_x.pkl"))
         lw.write(y,os.path.join(self.mesh_dir,"coords_y.pkl"))
         lw.write(mesh_cells,os.path.join(self.mesh_dir,"mesh_cells.pkl"))
+
+    def write_plotting_data_for_compute_mesh(self):
+        lw = load_write.Load_Write()
+        x = self.mesh.coordinates()[:,0]
+        y = self.mesh.coordinates()[:,1]
+        mesh_cells = self.mesh.cells()
+        lw.write(x,os.path.join(self.mesh_dir,"coords_x_compute_mesh.pkl"))
+        lw.write(y,os.path.join(self.mesh_dir,"coords_y_compute_mesh.pkl"))
+        lw.write(mesh_cells,os.path.join(self.mesh_dir,"mesh_cells_compute_mesh.pkl"))
 
     def reorder_data(self,datafile,M):
         lw = load_write.Load_Write()

@@ -76,6 +76,7 @@ M = lw.load_transfer_matrix(os.path.join(args.mesh_path,"M.dat"))
 pm = process_mesh.Process_Mesh(T_CG_order,meshfile_name,vizfile_name,v4_vizfile_name,args.mesh_path)
 
 # create an instance of the Find_Isotherms class
+iso_tol = 0.5
 iso = [423, 623, 723, 873]
 find_iso = find_isotherms.Find_Isotherms(iso)
 # create a file to write the iso_info to
@@ -103,8 +104,9 @@ for dir in jobs_log["path"]:
 
     # print(T)
     # find iso info and write it
-    iso_info = find_iso.locate_isotherm_intersection(X,Y,T,int(1e6),1e-6)
+    iso_info,miss = find_iso.locate_isotherm_intersection(X,Y,T,int(1e6),iso_tol)
     print('iso_info', iso_info)
+    print('miss',miss)
 
     D = find_iso.along_slab_distance(X,Y,T,iso_info)
     # print('iso_info',iso_info)
@@ -121,7 +123,8 @@ for dir in jobs_log["path"]:
 
     title = r"$T_{FOM}$"
     png_name = os.path.join(dir,"temperature.png")
-    level_vals = (423,623,800,1000,1200,1400)
+    # level_vals = (423,623,800,1000,1200,1400)
+    level_vals = (423,623,800,1000,1200)
     # level_vals = (150,350,450,600,800,1000,1200)
     # my_plotting_tool = plotting.Plotting(title,png_name,level_vals,iso_info)
     my_plotting_tool = plotting.Plotting(title,png_name,level_vals)
@@ -131,74 +134,67 @@ for dir in jobs_log["path"]:
     tri_mesh._cpp_triangulation = None
     lw.write(tri_mesh,os.path.join(dir,"tri_mesh.pkl"))
 
-    font_size = 18
-    fig = plt.figure(figsize=(20,12))
-    ax1 = fig.add_subplot(211)
-    ax1.set_aspect('equal')
-    ax1.scatter(T, Y)
-    ax1.tick_params(axis='both', which='major', labelsize=font_size)
-    ax1.set_xlabel('T (K)', fontsize=font_size)
-    ax1.set_ylabel('y (km)', fontsize=font_size)
+    # font_size = 18
+    # fig = plt.figure(figsize=(20,12))
+    # ax1 = fig.add_subplot(211)
+    # ax1.set_aspect('equal')
+    # ax1.scatter(T, Y)
+    # ax1.tick_params(axis='both', which='major', labelsize=font_size)
+    # ax1.set_xlabel('T (K)', fontsize=font_size)
+    # ax1.set_ylabel('y (km)', fontsize=font_size)
     
-    ax2 = fig.add_subplot(212)
-    ax2.set_aspect('equal')
-    ax2.scatter(T, X)
-    ax2.tick_params(axis='both', which='major', labelsize=font_size)
-    ax2.set_xlabel('T (K)', fontsize=font_size)
-    ax2.set_ylabel('x (km)', fontsize=font_size)
-    ax2.invert_yaxis()
-    plt.savefig("T_vs_X_and_Y.png")
+    # ax2 = fig.add_subplot(212)
+    # ax2.set_aspect('equal')
+    # ax2.scatter(T, X)
+    # ax2.tick_params(axis='both', which='major', labelsize=font_size)
+    # ax2.set_xlabel('T (K)', fontsize=font_size)
+    # ax2.set_ylabel('x (km)', fontsize=font_size)
+    # ax2.invert_yaxis()
+    # plt.savefig("T_vs_X_and_Y.png")
 
 # 
-II = np.argmin(Y-210.0)
-print(Y[0:II])
-# T_slab_norm = np.sqrt( np.sum(T[0:II]**2)/ T[0:II].shape[0] )
-T_slab_norm = np.sqrt( np.mean(T[0:II]**2) )
-print('norm of slab interface T to 210 km depth', np.linalg.norm(T[0:II]))
-print('T_slab_norm',T_slab_norm)
+# II = np.argmin(Y-210.0)
+# print(Y[0:II])
+# # T_slab_norm = np.sqrt( np.sum(T[0:II]**2)/ T[0:II].shape[0] )
+# T_slab_norm = np.sqrt( np.mean(T[0:II]**2) )
+# print('norm of slab interface T to 210 km depth', np.linalg.norm(T[0:II]))
+# print('T_slab_norm',T_slab_norm)
 
-# load downsampled T result
+# # load downsampled T result
+# # isotherm variation plot
+# font_size = 26
+# alpha = 1.0
+# png_name = os.path.join(args.output_path,"isotherm_variation.pdf")
+# print('Plotting isotherm variation inset.')
 
+# color_arr = cm.lajolla(np.linspace(0, 1, 5))
+# c_arr_2 = cm.hawaii(np.linspace(0,1,10))
 
+# fig = plt.figure(figsize=(20,12))
+# ax1 = fig.add_subplot(111)
+# ax1.set_aspect('equal')
+# tri_mesh = tri.Triangulation(coords_x, coords_y, mesh_cells)
+# for k in range(len(result_arr)):
+#     ax1.tricontour(tri_mesh, result_arr[k], levels=[423], colors='lightskyblue', alpha=alpha)
+# for k in range(len(result_arr)):
+#     ax1.tricontour(tri_mesh, result_arr[k], levels=[623], colors=mplc.to_hex(color_arr[1,:]), alpha=alpha)
+# for k in range(len(result_arr)):
+#     ax1.tricontour(tri_mesh, result_arr[k], levels=[723], colors=mplc.to_hex(color_arr[2,:]), alpha=alpha)
+# for k in range(len(result_arr)):
+#     ax1.tricontour(tri_mesh, result_arr[k], levels=[873], colors=mplc.to_hex(c_arr_2[0,:]), alpha=alpha)
+# fig = plt.plot(X,Y,'k-',linewidth=4)
+# fig = plt.xticks(fontsize=font_size);
+# fig = plt.yticks(fontsize=font_size);
+# fig = plt.xlabel('x (km)', fontsize=font_size)
+# fig = plt.ylabel('y (km)', fontsize=font_size)
+# # fig = plt.title(title, fontsize=font_size)
+# # plt.minorticks_on()
+# # plt.grid(visible=True, which='both')
+# plt.savefig(png_name)
 
+# png_name = os.path.join(args.output_path,"isotherm_variation_inset.pdf")
+# plt.xlim(0.0,400.0)
+# plt.ylim(-100.0,0.0)
+# plt.savefig(png_name)
 
-
-exit()
-
-# isotherm variation plot
-font_size = 26
-alpha = 1.0
-png_name = os.path.join(args.output_path,"isotherm_variation.pdf")
-print('Plotting isotherm variation inset.')
-
-color_arr = cm.lajolla(np.linspace(0, 1, 5))
-c_arr_2 = cm.hawaii(np.linspace(0,1,10))
-
-fig = plt.figure(figsize=(20,12))
-ax1 = fig.add_subplot(111)
-ax1.set_aspect('equal')
-tri_mesh = tri.Triangulation(coords_x, coords_y, mesh_cells)
-for k in range(len(result_arr)):
-    ax1.tricontour(tri_mesh, result_arr[k], levels=[423], colors='lightskyblue', alpha=alpha)
-for k in range(len(result_arr)):
-    ax1.tricontour(tri_mesh, result_arr[k], levels=[623], colors=mplc.to_hex(color_arr[1,:]), alpha=alpha)
-for k in range(len(result_arr)):
-    ax1.tricontour(tri_mesh, result_arr[k], levels=[723], colors=mplc.to_hex(color_arr[2,:]), alpha=alpha)
-for k in range(len(result_arr)):
-    ax1.tricontour(tri_mesh, result_arr[k], levels=[873], colors=mplc.to_hex(c_arr_2[0,:]), alpha=alpha)
-fig = plt.plot(X,Y,'k-',linewidth=4)
-fig = plt.xticks(fontsize=font_size);
-fig = plt.yticks(fontsize=font_size);
-fig = plt.xlabel('x (km)', fontsize=font_size)
-fig = plt.ylabel('y (km)', fontsize=font_size)
-# fig = plt.title(title, fontsize=font_size)
-# plt.minorticks_on()
-# plt.grid(visible=True, which='both')
-plt.savefig(png_name)
-
-png_name = os.path.join(args.output_path,"isotherm_variation_inset.pdf")
-plt.xlim(0.0,350.0)
-plt.ylim(-160.0,0.0)
-plt.savefig(png_name)
-
-plt.close("all")
+# plt.close("all")

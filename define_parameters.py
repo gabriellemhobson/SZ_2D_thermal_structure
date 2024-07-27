@@ -14,14 +14,17 @@ class Parameters():
         self.slab_vel = 5.0*self.cmyr_to_ms/self.Vstar
         self.Ts = 273 # K, temp at surface
         self.Tb = 1573 # K, temp at inflow boundary of wedge
+        # self.Tb = 1623 # 274 # K, verification
         self.z_bc = None # km, depth of base of linear geotherm on overplate_right bc
+        # 100 Myr for Hik, 20 Myr for Nankai, 8 Myr for cascadia
+        # 10 Ma for verification
         self.slab_age = 8.0*(1e6*365.0*24.0*60.0*60.0)/self.Tstar # Myr in seconds, for erf() heat flow function, nondim
         # kappa_SI = 0.7272e-6 # m^2 s^-1
         # self.kappa = (kappa_SI / (self.Lstar**2)) * self.Tstar # nondimensional
         self.eta_max = 1e26 / self.Eta_star # Pa s then nondimensionalized
         self.A_diff = 1.32043e9 # Pa s
         self.E_diff = 335 * 1e3 # J/mol
-        self.A_disl = 28968.6 # Pa s
+        self.A_disl = 28968.6 # Pa s 
         self.E_disl = 540e3 # J/mol
         self.R = 8.3145 # J/mol K
         self.n = 3.5
@@ -35,14 +38,21 @@ class Parameters():
         self.rho_mantle = 3300 / self.char_kg * (self.Lstar**3) # kg m^-3 -> nondimensionalized, density of the mantle
         self.rho_crust = 2700 / self.char_kg * (self.Lstar**3) # kg m^-3 density of crust
         self.rho_slab = 3300 / self.char_kg * (self.Lstar**3) # kg m^-3 density of slab
-        # self.rho = 3300 / char_kg * (self.Lstar**3) # kg m^-3 -> nondimensionalized, density of the mantle
+        # self.rho_mantle = 3300 / self.char_kg * (self.Lstar**3) # verification
+        # self.rho_crust = 3300 / self.char_kg * (self.Lstar**3) # verification
+        # self.rho_slab = 3300 / self.char_kg * (self.Lstar**3) # verification
+        # # self.rho = 3300 / char_kg * (self.Lstar**3) # kg m^-3 -> nondimensionalized, density of the mantle
         self.g = 9.8 / self.Lstar * (self.Tstar**2)# m s^-2, gravitational acceleration
         self.k_mantle = 3.1 / self.char_kg / self.Lstar * (self.Tstar**3) # W / m K -> units of K
         self.k_crust = 2.5 / self.char_kg / self.Lstar * (self.Tstar**3) # W / m K -> units of K
         self.k_slab = 3.1 / self.char_kg / self.Lstar * (self.Tstar**3) # W / m K -> units of K
         self.cp = 1250 / (self.Lstar**2) * (self.Tstar **2) # J / kg K -> units of K
+        # self.k_mantle = 3.0 / self.char_kg / self.Lstar * (self.Tstar**3) # verification
+        # self.k_crust = 3.0 / self.char_kg / self.Lstar * (self.Tstar**3) # verification
+        # self.k_slab = 3.0 / self.char_kg / self.Lstar * (self.Tstar**3) # verification
+        # self.cp = 1250 / (self.Lstar**2) * (self.Tstar **2) # J / kg K -> units of K
         self.kappa_slab = self.k_slab / (self.rho_slab * self.cp)
-        self.sigma = 0.2
+        self.sigma = 0.2 # 0.2
 
         # set numerical parameters
         self.T_CG_order = T_CG_order
@@ -52,7 +62,7 @@ class Parameters():
         self.n_iters = n_iters
         self.diff_tol = diff_tol
         self.dt = 100000 * (365*24*60*60) / self.Tstar # 100,000 yrs nondimensionalized, only used when pde_solver_time_dep.py is used 
-        self.n_ts = 200
+        self.n_ts = 180
 
     def order_param_dict(self):
         from collections import OrderedDict

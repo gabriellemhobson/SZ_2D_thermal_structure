@@ -307,35 +307,39 @@ class PDE_Solver():
         diff,p_diff = Function(self.W_u_p).split()
         diff.vector()[:] = u_n.vector() - u_n_slab.vector()
 
-        P = FiniteElement("CG", self.mesh.ufl_cell(), 1)
-        W = FunctionSpace(self.mesh, P)
-
-        J = Function(W)
-        f_y = Function(W)
-        diff.vector()[:] *= diff.vector()
-        J,f_y = diff.split()
-        J.vector()[:] += f_y.vector()
-        J.vector().set_local(np.sqrt(J.vector().get_local()))
-        J.vector().apply('')
-
-        P_T = FiniteElement("CG", self.mesh.ufl_cell(), self.param.T_CG_order)
-        W_T = FunctionSpace(self.mesh, P_T)
-        J_viz = project(J,W_T,solver_type='mumps')
-
         P_idx = FiniteElement("CG", self.mesh_viz.ufl_cell(), 1)
         W_idx = FunctionSpace(self.mesh_viz, P_idx)
         v2d_idx = vertex_to_dof_map(W_idx)
         J_idx = Function(W_idx)
 
-        # get jump everywhere
-        for v in vertices(self.mesh_viz):
-            point_to_v = int(I_Field.vector()[v2d_idx[v.index()]])
-            xy = np.array([Vertex(self.mesh_viz,point_to_v).point().x(), Vertex(self.mesh_viz,point_to_v).point().y()],dtype=float)
-            eval_j = np.array([0.0])
-            J_viz.eval(eval_j,xy)
-            dof_idx = v2d_idx[v.index()]
-            J_idx.vector()[dof_idx] = eval_j[0]
+        arr_xy = []
+        arr_diff = []
 
+        for facet in facets(self.mesh):
+            if (self.boundaries.array()[facet.index()] == self.slab_overplate_int) | (self.boundaries.array()[facet.index()] == self.slab_wedge_int):
+                for v in vertices(facet):
+                    xy = np.array([v.point().x(), v.point().y()],dtype=float)
+                    val = np.array([0.0, 0.0])
+                    diff.eval(val,xy)
+                    arr_xy.append(xy)
+                    arr_diff.append(val)
+
+        arr_xy_np = np.array(arr_xy)
+        arr_diff_np = np.array(arr_diff)
+        norm = np.sqrt( (arr_diff_np[:,0]*arr_diff_np[:,0]) + (arr_diff_np[:,1]*arr_diff_np[:,1]) )
+
+        print('max magnitude, jump calculation: ', np.max(norm))
+
+        for facet in facets(self.mesh_viz):
+            if (self.boundaries_viz.array()[facet.index()] == self.slab_overplate_int) | (self.boundaries_viz.array()[facet.index()] == self.slab_wedge_int):
+                for v in vertices(facet):
+                    xy = np.array([v.point().x(), v.point().y()],dtype=float)
+                    I = np.argmin(np.abs(arr_xy_np[:,0] - xy[0]))
+                    dof_idx = v2d_idx[v.index()]
+                    J_idx.vector()[dof_idx] = norm[I]
+
+        J_idx_file = File(os.path.join(self.output_dir,"J_idx.pvd"))
+        J_idx_file << J_idx
         return J_idx
 
     def update_inflow_boundary(self,u):
@@ -518,8 +522,7 @@ class PDE_Solver():
         # F_temp += self.param.dt*Constant(self.param.rho_crust)*Constant(self.param.cp)*self.v_T*inner(u_n, grad(self.phi_T))*self.dx(19)
 
 
-        # # add in shear heating
-
+        # add in shear heating
         class Pressure(UserExpression):
             def __init__(self, param, z_base, z_top, **kwargs):
                 super(Pressure, self).__init__(**kwargs)
@@ -528,22 +531,28 @@ class PDE_Solver():
                 self.z_top = z_top
             def eval(self, values, x):
                 if x[1] >= self.z_base:
-                    values[0] = self.param.rho_crust*self.param.g*np.abs(x[1] - z_top)
+                    values[0] = self.param.rho_crust*self.param.g*np.abs(x[1] - self.z_top)
                 if x[1] < self.z_base:
                     values[0] = (self.param.rho_crust*self.param.g*np.abs(self.z_base - self.z_top) \
                         + self.param.rho_mantle*self.param.g*np.abs(x[1] - self.z_base))
             def value_shape(self):
                 return (1,)
 
-        pressure = Pressure(self.param, z_base, z_top)
-        H_sh = Expression(("(mu*jump*p)/(abs(sig)*sqrt(2*pi))*exp(-pow(d,2)/(2*pow(sig,2)))"), \
-            degree=1, mu=self.param.mu, d=D_Field,sig=self.param.sigma,jump=J,p=pressure)
-        H_sh_field = self.project_gmh(H_sh,self.W_T)
-        H_sh_file = File(os.path.join(self.output_dir,"H_sh.pvd"))
-        H_sh_file << H_sh_field
+        pressure = Pressure(self.param, self.z_base, self.z_top)
+
+        Q = Expression(("mu*p*j"), \
+            degree=1, mu=self.param.mu, p=pressure, j=J)
+
+        Q_field = self.project_gmh(Q,self.W_T)
+        Q_file = File(os.path.join(self.output_dir,"Q_field.pvd"))
+        Q_file << Q_field
+
+        F_temp += - self.v_T('+') * Q('+') * self.dS(self.slab_overplate_int)
+        F_temp += - self.v_T('+') * Q('+') * self.dS(self.slab_wedge_int)
+        print('Using the line source instead of H_sh_field.')
         
         # F_temp += - self.param.dt*inner(H_sh_field,self.v_T)*dx # minus sign is here so that lhs() and rhs() works out
-        F_temp += - inner(H_sh_field,self.v_T)*dx # minus sign is here so that lhs() and rhs() works out
+        # F_temp += - inner(H_sh_field,self.v_T)*dx # minus sign is here so that lhs() and rhs() works out
         a_T,L_T = lhs(F_temp),rhs(F_temp)
         T_i = Function(self.W_T)
         if (major_minor == "3.12"):
@@ -680,6 +689,7 @@ class PDE_Solver():
         eta_slab,eta_wedge = self.isoviscous()
         u_n_slab = self.solve_slab_flow(eta_slab,eta_wedge)
         File("u_n_slab.pvd") << u_n_slab
+
         # slab_sub = SubMesh(self.mesh, self.subdomains, 17)
         # wedge_sub = SubMesh(self.mesh, self.subdomains, 18)
         # overplate_sub = SubMesh(self.mesh, self.subdomains, 19)
@@ -797,8 +807,10 @@ class PDE_Solver():
             diff_t = (T_p.vector() - T_old.vector()).norm('l2')
             T_old.vector()[:] = T_p.vector()[:]
             T_pm1.vector()[:] = T_old.vector()[:]
-            tfile_pvd << T_old
-            ufile_pvd << u_n
+            # tfile_pvd << T_old
+            # ufile_pvd << u_n
+            self.write(np.array(T_old.vector()),os.path.join(self.output_dir, "temperature_"+str(ts)+".pkl"))
+
             print('diff between timesteps:', diff_t)
             if diff_t < self.param.diff_tol:
                 print('diff between timesteps is below tolerance', diff_t)

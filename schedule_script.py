@@ -56,7 +56,9 @@ input_dict = {'mesh_dir':mesh_dir,\
               'diff_tol':args.diff_tol,\
               'T_CG_order':args.T_CG_order}
 
-M = Subduction("input_param.csv",input_dict)
+# M = Subduction("input_param_nankai.csv",input_dict)
+M = Subduction("input_param_cascadia.csv",input_dict)
+# M = Subduction("input_param_hik.csv",input_dict)
 
 sch = ps.ParametricScheduler(args.output_path)
 sch.output_path_prefix = args.sample_method
@@ -69,7 +71,7 @@ discard = cpc.generate_samples(args.n1)
 p_vals = cpc.generate_samples(args.n2)
 cpc.write_csv(args.n2,args.output_path)
 
-run, ignore = sch.batched_schedule(p_vals, max_jobs=4, wait_time=5.0)
+run, ignore = sch.batched_schedule(p_vals, max_jobs=92, wait_time=5.0)
 nscans = sch.wait_all(1.0)
 
 print('run', run)
