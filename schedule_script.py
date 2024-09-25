@@ -23,6 +23,9 @@ parser.add_argument('--n2', type=int, required=True, help="Number of forward mod
 parser.add_argument('--seed', type=int, required=True, help="Seed for the sequence of samples drawn from parameter space.")
 parser.add_argument('--jobs_csv', type=str, required=True, help="Name of csv file to tracks jobs run.")
 parser.add_argument('--viscosity_type', type=str, required=True, help="Type of viscosity flow law. Options are 'isoviscous', 'diffcreep', 'disccreep', or 'mixed'.")
+parser.add_argument('--input_param_csv', type=str, default="", required=True, help="Which csv file to use to define input param bounds.")
+parser.add_argument('--max_jobs', type=int, default=92, required=True, help="How many jobs to run at once.")
+
 # optional arguments
 parser.add_argument('--solver', type=str, default="ss", required=False, help="Type of solver, must be 'ss' or 'time_dep'. ")
 parser.add_argument('--tol', type=float, default=1e-5, required=False, help="Residuals for pde solutions in forward model solve must be below this tolerance.")
@@ -57,8 +60,12 @@ input_dict = {'mesh_dir':mesh_dir,\
               'T_CG_order':args.T_CG_order}
 
 # M = Subduction("input_param_nankai.csv",input_dict)
-M = Subduction("input_param_cascadia.csv",input_dict)
+# M = Subduction("input_param_cascadia.csv",input_dict)
 # M = Subduction("input_param_hik.csv",input_dict)
+# M = Subduction("input_param_sherrill_cascadia.csv",input_dict)
+# M = Subduction("input_param_visco_endmember_min.csv",input_dict)
+M = Subduction(args.input_param_csv,input_dict)
+
 
 sch = ps.ParametricScheduler(args.output_path)
 sch.output_path_prefix = args.sample_method
@@ -71,7 +78,7 @@ discard = cpc.generate_samples(args.n1)
 p_vals = cpc.generate_samples(args.n2)
 cpc.write_csv(args.n2,args.output_path)
 
-run, ignore = sch.batched_schedule(p_vals, max_jobs=92, wait_time=5.0)
+run, ignore = sch.batched_schedule(p_vals, max_jobs=args.max_jobs, wait_time=5.0)
 nscans = sch.wait_all(1.0)
 
 print('run', run)

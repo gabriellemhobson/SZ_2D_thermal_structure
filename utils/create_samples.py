@@ -41,7 +41,8 @@ class CreateSamples:
     def corner_samples(self):
         sample = self.cartesian_product(2)
         print(sample)
-        return sample
+        sample_unique = np.unique(sample, axis=0)
+        return sample_unique
 
     def generate_samples(self,n):
         if self.method == "cartesian_product":

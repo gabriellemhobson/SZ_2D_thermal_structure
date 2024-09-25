@@ -18,13 +18,22 @@ class Parameters():
         self.z_bc = None # km, depth of base of linear geotherm on overplate_right bc
         # 100 Myr for Hik, 20 Myr for Nankai, 8 Myr for cascadia
         # 10 Ma for verification
-        self.slab_age = 8.0*(1e6*365.0*24.0*60.0*60.0)/self.Tstar # Myr in seconds, for erf() heat flow function, nondim
+        self.slab_age = 20.0*(1e6*365.0*24.0*60.0*60.0)/self.Tstar # Myr in seconds, for erf() heat flow function, nondim
         # kappa_SI = 0.7272e-6 # m^2 s^-1
         # self.kappa = (kappa_SI / (self.Lstar**2)) * self.Tstar # nondimensional
         self.eta_max = 1e26 / self.Eta_star # Pa s then nondimensionalized
-        self.A_diff = 1.32043e9 # Pa s
+        self.eta_min = 1e18 / self.Eta_star 
+        # self.A_diff = 1.32043e9 # Pa s
+        # self.A_disl = 28968.6 # Pa s 
+
+        # defining params to match Hirth and Kohlstedt
+        self.A_diff = 1.0e6 # units to match Hirth and Kohlstedt
+        self.A_disl = 90 # units to match Hirth and Kohlstedt
+        self.d = 10000 # grain size in microns
+        self.m = 3.0 # grain size exponent
+        self.C_OH = 1000 # OH concentration, ppm-H/Si
+        self.r = 1 # C_OH exponent
         self.E_diff = 335 * 1e3 # J/mol
-        self.A_disl = 28968.6 # Pa s 
         self.E_disl = 540e3 # J/mol
         self.R = 8.3145 # J/mol K
         self.n = 3.5

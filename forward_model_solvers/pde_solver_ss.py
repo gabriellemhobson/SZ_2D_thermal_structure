@@ -639,18 +639,45 @@ class PDE_Solver():
     def mixed(self,u,T):
         def symgrad(u):
                 return 0.5*(grad(u)+grad(u).T) - (1/3)*Identity(2)*div(u)
-        
+
         e_dev = symgrad(u)
 
-        eta_diff = ( self.param.A_diff * exp(self.param.E_diff / (self.param.R*T)) ) / self.param.Eta_star
-        e_II_term = sqrt((1/2) * inner(e_dev, e_dev))  / self.param.Tstar
-        eta_disl = ( self.param.A_disl * exp(self.param.E_disl/(self.param.n*self.param.R*T)) * pow(e_II_term,((1-self.param.n)/self.param.n)) ) / self.param.Eta_star
+        # eta_diff = ( self.param.A_diff * exp(self.param.E_diff / (self.param.R*T)) ) / self.param.Eta_star
+        # e_II_term = sqrt((1/2) * inner(e_dev, e_dev))  / self.param.Tstar
+        # eta_disl = ( self.param.A_disl * exp(self.param.E_disl/(self.param.n*self.param.R*T)) * pow(e_II_term,((1-self.param.n)/self.param.n)) ) / self.param.Eta_star
+        # eta_eff_dim = 1.0/((1/eta_diff) + (1/eta_disl) + (1/self.param.eta_max))
 
+        # written in form to match Hirth and Kohlstedt
+        n_diff = 1
+        
+        # eta_diff = ( (self.param.A_diff**(-1/n_diff)) * 1e6 * self.param.d**(self.param.m/n_diff) * self.param.C_OH**(-self.param.r/n_diff) * exp(self.param.E_diff / (n_diff*self.param.R*T)) ) / self.param.Eta_star
+        F2_diff = 0.3333 
+
+        eta_diff = (F2_diff * (self.param.A_diff) * 1e6 * exp(self.param.E_diff / (n_diff*self.param.R*T)) ) / self.param.Eta_star
+
+        e_II_term = sqrt((1/2) * inner(e_dev, e_dev)) / self.param.Tstar # check units
+        
+        F2_disl = 1/(2**((self.param.n-1)/self.param.n) * 3**((self.param.n+1)/2/self.param.n))
+
+        eta_disl = F2_disl*(self.param.A_disl**(1/self.param.n) * 1e6 * exp(self.param.E_disl/(self.param.n*self.param.R*T)) * pow(e_II_term,((1-self.param.n)/self.param.n)) ) / self.param.Eta_star
+
+        
+        # prefact = self.param.A_disl**(-1/self.param.n) * self.param.d**(self.param.p/self.param.n) * self.param.fh2**(-self.param.r/self.param.n)
+        # eta_disl = ( prefact * exp(self.param.E_disl/(self.param.n*self.param.R*T)) * pow(e_II_term,((1-self.param.n)/self.param.n)) ) / self.param.Eta_star
+
+
+        # composite flow law
+        eta_eff_comp = 1.0/((1/eta_diff) + (1/eta_disl) + (1/self.param.eta_max ))
+
+        # limit min
+        # eta_eff = max(eta_eff_comp, self.param.eta_min)
+        eta_eff = (eta_eff_comp+self.param.eta_min+abs(eta_eff_comp-self.param.eta_min))/Constant(2)
+    
         # nondimensional
-        eta_eff = 1.0/((1/eta_diff) + (1/eta_disl) + (1/self.param.eta_max))
+        # eta_eff = eta_eff_dim / self.param.Eta_star
 
         # eta = pow((pow(eta_min,M)+pow(eta_eff,M)),(1/M))
-        return eta_eff
+        return eta_eff, eta_diff, eta_disl, e_II_term
 
     def distance_fields(self):
         P = FiniteElement("CG", self.mesh_viz.ufl_cell(), 1)
@@ -796,13 +823,28 @@ class PDE_Solver():
                     elif self.param.viscosity_type == 'disccreep':
                         eta_wedge = self.disccreep(u_n,T_n)
                     elif self.param.viscosity_type == 'mixed':
-                        eta_wedge = self.mixed(u_n,T_n)
+                        eta_wedge, eta_diff, eta_disl, e_II_term = self.mixed(u_n,T_n)
                     else:
                         raise ValueError("The options for viscosity must be 'isoviscous', 'diffcreep', 'disccreep', or 'mixed'.")
                     
                     P_eta = FiniteElement("DG", self.mesh.ufl_cell(), 0)
                     W_eta = FunctionSpace(self.mesh, P_eta)
                     eta_field = self.project_gmh(eta_wedge,W_eta)
+                    if self.param.viscosity_type == 'mixed':
+                        eta_diff_field = self.project_gmh(eta_diff,W_eta)
+                        eta_disl_field = self.project_gmh(eta_disl,W_eta)
+                        e_II_term_field = self.project_gmh(e_II_term,W_eta)
+
+                        dm = W_eta.dofmap()
+                        for cell in cells(self.mesh):
+                            subdomain_index = self.subdomains.array()[cell.index()]
+                            cell_dofs = dm.cell_dofs(cell.index())
+                            if subdomain_index == 17:
+                                eta_diff_field.vector()[cell_dofs] = Constant(1e26/self.param.Eta_star)
+                                eta_disl_field.vector()[cell_dofs] = Constant(1e26/self.param.Eta_star)
+                            if subdomain_index == 19:
+                                eta_diff_field.vector()[cell_dofs] = Constant(1e26/self.param.Eta_star)
+                                eta_disl_field.vector()[cell_dofs] = Constant(1e26/self.param.Eta_star)
 
                     dm = W_eta.dofmap()
                     for cell in cells(self.mesh):
@@ -846,8 +888,13 @@ class PDE_Solver():
         
 
         self.write(np.array(T_n.vector()),os.path.join(self.output_dir, "temperature.pkl"))
+        
         if self.param.viscosity_type != 'isoviscous':
             self.write(np.array(eta_field.vector()),os.path.join(self.output_dir, "viscosity.pkl"))
+            if self.param.viscosity_type == 'mixed':
+                self.write(np.array(eta_diff_field.vector()),os.path.join(self.output_dir, "eta_diff.pkl"))
+                self.write(np.array(eta_disl_field.vector()),os.path.join(self.output_dir, "eta_disl.pkl"))
+                self.write(np.array(e_II_term_field.vector()),os.path.join(self.output_dir, "e_II_term.pkl"))
 
 
 

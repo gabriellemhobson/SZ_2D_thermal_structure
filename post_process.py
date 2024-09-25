@@ -39,6 +39,7 @@ parser.add_argument('--mesh_path', type=str, default='input', required=True, hel
 parser.add_argument('--profile_name', type=str, default=None, required=True, help="Which profile to use.")
 parser.add_argument('--reorder', type=bool, default=True, required=False, help="Whether or not to reorder the fields.")
 parser.add_argument('--output_path', type=str, default='./', required=False, help="Path where generated output will be written.")
+parser.add_argument('--iso_log_name', type=str, default='iso_info.csv', required=False, help="File where iso intersection info will be written.")
 parser.add_argument('--include', type=str, nargs='+', required=True, help="Which sampling methods to include.")
 parser.add_argument('--pre_dir', type=str, default='./', required=False, help="Path to handle absolute vs relative data paths in logs.")
 parser.parse_known_args(namespace=args)
@@ -80,7 +81,7 @@ iso_tol = 0.5
 iso = [423, 623, 723, 873]
 find_iso = find_isotherms.Find_Isotherms(iso)
 # create a file to write the iso_info to
-iso_info_csv = os.path.join(args.output_path,"iso_info.csv")
+iso_info_csv = os.path.join(args.output_path,args.iso_log_name)
 print('Writing isotherm-slab interface intersection info to ',iso_info_csv)
 fp = open(iso_info_csv,'w')
 fp.write('Experiment,')
@@ -89,7 +90,7 @@ for k in range(len(iso)):
 fp.write('\n')
 fp.close()
 
-result_arr = []
+# result_arr = []
 for dir in jobs_log["path"]:
     if args.reorder == True:
         reorder_field = pm.reorder_data(os.path.join(dir,args.data_fname),M)
@@ -97,7 +98,7 @@ for dir in jobs_log["path"]:
 
     # get T on the slab interface
     result = lw.load(os.path.join(dir, "temperature_reordered.pkl"))
-    result_arr.append(result)
+    # result_arr.append(result)
     T = result[TAGS]
 
     lw.write(T, os.path.join(dir,"T.pkl"))
