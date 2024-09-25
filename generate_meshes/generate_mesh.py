@@ -7,10 +7,9 @@ import copy as copy
 
 class Generate_Mesh:
     '''
-    __init__() loads slab 2.0 and trench data and adds the attributes self.af, self.trench_lat_lon,
-               self.trench_norm, and self.slab_norm.  
+    __init__() loads slab 2.0 and trench data and adds the attributes self.af and self.slab_norm.  
     '''
-    def __init__(self,fname_slab,fname_trench,constrain,start_line,end_line):
+    def __init__(self,fname_slab,constrain):
         print('Loading file', fname_slab)
         a = np.loadtxt(fname_slab, delimiter=',')
         af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
@@ -25,14 +24,8 @@ class Generate_Mesh:
                 raise ValueError('Must pass in "less" or "greater" to the "less_or_greater" key in constrain.' )
             af = af_const 
         self.af = af
-        self.trench_lat_lon, trench_xy = self.load_trench_data(fname_trench,start_line,end_line) 
-
+        
         self.slab_norm = self.normalize_lat_lon_data(self.af)
-
-        # normalize trench data also
-        self.trench_norm = np.zeros(np.shape(self.trench_lat_lon))
-        for k in range((len(self.trench_lat_lon))):
-            self.trench_norm[k] = self.normalize_point(self.af,self.trench_lat_lon[k,:])
 
     def normalize_lat_lon_data(self,af):
         data = copy.deepcopy(af) # this should be unnecessary
@@ -99,36 +92,6 @@ class Generate_Mesh:
         ds = slab_surface(np.vstack((l1s, l2s)).T)
         return ds
 
-    def profile_rescale_xyz(self,data,l1s,l2s,ds):
-        minL1, maxL1 = np.min(data[:,0]), np.max(data[:,0])
-        minL2, maxL2 = np.min(data[:,1]), np.max(data[:,1])
-        minD, maxD   = np.min(data[:,2]), np.max(data[:,2])
-        dL1, dL2, dD = np.abs(maxL1 - minL1), np.abs(maxL2 - minL2), np.abs(maxD - minD)
-        # Rescale ds, l1s, l2s back to lat-lon-depth coords
-        l1s *= dL1
-        l1s += minL1
-        l2s *= dL2
-        l2s += minL2
-        ds *= dD
-        if np.sign(minD) > 0:
-            ds += minD
-        elif np.sign(minD) < 0:
-            ds -= np.abs(minD)
-
-        # # Convert to xyz
-        # lon = l1s * np.pi/180.0
-        # lat = l2s * np.pi/180.0
-        # #R = 6371.0 + ds
-        # R = 6371.0
-
-        # x = R * np.cos(lat) * np.cos(lon)
-        # y = R * np.cos(lat) * np.sin(lon)
-        # # z = R * np.sin(lat)
-        # z = ds
-        # xyz = np.vstack([x,y,z]).T
-        xyz = np.vstack([l1s,l2s,ds]).T
-        return xyz
-
     def profile_rescale_lat_lon(self,data,l1s_in,l2s_in,ds_in):
         l1s_cp,l2s_cp,ds_cp = copy.deepcopy(l1s_in), copy.deepcopy(l2s_in), copy.deepcopy(ds_in)
         minL1, maxL1 = np.min(data[:,0]), np.max(data[:,0])
@@ -168,31 +131,6 @@ class Generate_Mesh:
         xyz = np.vstack([x,y,z]).T
         print('dimension', xyz.shape)
         return xyz 
-
-    def plot_xyz(self,slab_xyz,trench_xyz,point,profile_xyz):
-        fig = plt.figure(figsize=(12,8))
-        font_size=14
-        ax = fig.add_subplot(111)
-        fig1 = ax.scatter(slab_xyz[:,0],slab_xyz[:,1],c=slab_xyz[:,2],cmap='viridis')
-        cb = plt.colorbar(fig1)
-        cb.set_label(label='depth (normalized)', fontsize=font_size)
-        # cfill.set_clim(0,0.0025)
-        cb.ax.tick_params(labelsize=font_size)
-        # fig2 = ax.scatter(profile_xyz[:,0],profile_xyz[:,1],c=profile_xyz[:,2],cmap='magma')
-        fig1 = ax.scatter(trench_xyz[:,0],trench_xyz[:,1],c='g')
-        fig1 = ax.scatter(trench_xyz[point,0],trench_xyz[point,1],c='m')
-        fig1= ax.scatter(profile_xyz[:,0],profile_xyz[:,1],c='k')
-        ax.set_xlabel('x (km)', fontsize=font_size)
-        ax.set_ylabel('y (km)', fontsize=font_size)
-        # ax.set_zlabel('z (km)', fontsize=font_size)
-        ax.legend(['Slab data','Profile','Trench'])
-        # ax.set_xlim([-3000,-1500])
-        # ax.set_ylim([-4250,-2750])
-        # ax.set_zlim([-3800,5000])
-        # ax.view_init(azim=0, elev=90)
-        plt.savefig("xyz_map_view.png")
-        plt.close('all')
-        # plt.show()
 
     def plot_profile(self,profile_1,title):
         font_size = 18
@@ -251,10 +189,13 @@ class Generate_Mesh:
 
         d_along_profile = 0.0
         for k in range(1,np.shape(profile)[0]):
-            h_k = self.euclidean_distance(profile[k,:],profile[k-1,:])
+            # h_k = self.euclidean_distance(profile[k,:],profile[k-1,:])
+            h_k = self.euclidean_distance(profile[k,0:2],profile[k-1,0:2])
             d_along_profile += h_k
             profile_trans[k,0] = d_along_profile
 
+        print('Shifting profile up by : ', profile_trans[0,2])
+        self.vertical_shift = profile_trans[0,2]
         profile_trans[:,2] -= profile_trans[0,2]
         return profile_trans
 
@@ -274,12 +215,18 @@ class Generate_Mesh:
         pn = (slab_thickness/np.linalg.norm(dn))*dn
         return pn
 
-    def write_slice_to_geo(self,profile,h,N,pn,filename,geo_info,write_msh):
-        print('profile',np.shape(profile))
+    def write_slice_to_geo(self,profile,h,N,pn,filename,geo_info,write_msh,adjust_depths):
+        print('profile shape',np.shape(profile))
         print('Writing to file: ',filename)
 
         # find or create corner point
-        corner_depth = geo_info["corner_depth"]
+        if adjust_depths:
+            corner_depth = - geo_info["overplate_thickness"] - self.vertical_shift
+            print('With vertical_shift of', self.vertical_shift, \
+                  "and overplate_thickness of", geo_info["overplate_thickness"], \
+                    "the corner_depth is", corner_depth)
+        else:
+            corner_depth = - geo_info["overplate_thickness"]
         corner_pt = np.argmin(np.abs(profile[:,1]-corner_depth))
         print('corner_pt',corner_pt)
 
@@ -400,34 +347,7 @@ class Generate_Mesh:
             raise ValueError('Mismatch in length of trench_data[point,:] and vel_vec.')
         return end_point
 
-    def load_trench_data(self,fname,start_line,end_line):
-        print('Loading file', fname)
-        f = open(fname,'r')
-        boundaries_all = f.readlines()
-        boundaries_all = np.array(boundaries_all[start_line:end_line])
-        boundaries = np.zeros((np.shape(boundaries_all)[0],2))
-        for k in range((np.shape(boundaries_all)[0])):
-            boundaries[k,:] = boundaries_all[k].split(sep=',')
-        boundaries = boundaries.astype(float)
-
-        # get lon into same ref as slab data 
-        if np.any(boundaries[:,0] < 0):
-            print('Adding 360 to longitudes so they are in same ref frame as slab data.')
-            boundaries[:,0] += 360
-
-        lon = boundaries[:,0] * np.pi/180.0
-        lat = boundaries[:,1] * np.pi/180.0
-        R = 6371.0
-
-        x = R * np.cos(lat) * np.cos(lon)
-        y = R * np.cos(lat) * np.sin(lon)
-        # z = R * np.sin(lat)
-
-        xy = np.vstack([x,y]).T
-        print('dimension', xy.shape)
-        return boundaries, xy
-
-    def run_generate_mesh(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,slab_thickness,plot_verbose=False,write_msh=False):
+    def run_generate_mesh(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,slab_thickness,plot_verbose,write_msh=False,adjust_depths=False):
 
         start_point = self.normalize_point(self.af,start_point_latlon)
         # end_point_xy = trench_normal(point,scaling,trench_xy)
@@ -438,21 +358,42 @@ class Generate_Mesh:
         nsample = 100
         l1s = np.linspace(start_point[0], end_point[0], nsample)
         l2s = np.linspace(start_point[1], end_point[1], nsample)
+        
+        # redo start point so it is nearest to trench
+        # this is useful if the start point lies outside of the slab2 data
+        dist_arr = np.ones(self.slab_norm.shape[0])
+        for k in range((l1s.shape[0])):
+            dist_in = np.ones(self.slab_norm.shape[0])
+            for j in range((self.slab_norm.shape[0])):
+                dist_in[j] = np.linalg.norm(np.array([l1s[k],l2s[k]]) - self.slab_norm[j,0:2])
+            dist_arr[k] = np.min(dist_in)
+            if dist_arr[k] < 0.01:
+                start_point = np.array([l1s[k], l2s[k]])
+                break
+
+        l1s = np.linspace(start_point[0], end_point[0], nsample)
+        l2s = np.linspace(start_point[1], end_point[1], nsample)
+
+
+        # ``````````````````````````````````````
         ds = self.create_RBF(self.slab_norm,l1s,l2s,coarse=10)
+
 
         profile_lat_lon = self.profile_rescale_lat_lon(self.af,l1s,l2s,ds)  
 
         profile_xyz = self.convert_slab2_to_xyz(profile_lat_lon)
+        self.profile_xyz = profile_xyz
         self.plot_profile(profile_xyz,'Profile in x,z coords') # here profile is x,y,z
         h = self.neighbour_distance(profile_xyz)
         
+        self.profile_xyz_compare = profile_xyz
         # do the conversion here
         profile_trans = self.x_along_profile_coords(profile_xyz)
-        # self.plot_profile(profile_trans,'Profile transformed into along-slab coords')
+        self.plot_profile(profile_trans,'Profile transformed into along-slab coords')
 
         N = 1000
         profile_smooth,h_smooth = self.smooth_slice(profile_trans,h,N)
-        # self.plot_profile(profile_smooth,'Profile interpolated to add N = {} points'.format(N))
+        self.plot_profile(profile_smooth,'Profile interpolated to add N = {} points'.format(N))
 
         profile_flipped = self.flip_profile_lr(profile_smooth)
         self.plot_profile(profile_flipped,'Final profile')
@@ -467,9 +408,9 @@ class Generate_Mesh:
         # compute the point normal to the end of the slab interface
         pn = self.get_point_normal(profile_flipped,slab_thickness)
 
-        self.write_slice_to_geo(profile_flipped,h_smooth,N,pn,geo_filename,geo_info,write_msh=write_msh)
+        self.write_slice_to_geo(profile_flipped,h_smooth,N,pn,geo_filename,geo_info,write_msh=write_msh,adjust_depths=adjust_depths)
 
-        if plot_verbose==True:
+        if plot_verbose:
 
             fig = plt.figure(figsize=(11,8))
             font_size=14
@@ -479,7 +420,6 @@ class Generate_Mesh:
             cb = plt.colorbar(fig1)
             cb.set_label(label='depth (normalized)', fontsize=font_size)
             cb.ax.tick_params(labelsize=font_size)
-            fig1 = ax.scatter(self.trench_lat_lon[:,0],self.trench_lat_lon[:,1],c='g')
             ax.set_xlabel('lon', fontsize=font_size)
             ax.set_ylabel('lat', fontsize=font_size)
             plt.minorticks_on()
@@ -508,13 +448,11 @@ class Generate_Mesh:
             ax.set_aspect('equal')
             fig1 = ax.scatter(self.af[:,0],self.af[:,1],c=self.af[:,2],cmap='viridis')
             cb = plt.colorbar(fig1)
-            cb.set_label(label='depth (normalized)', fontsize=font_size)
+            cb.set_label(label='depth', fontsize=font_size)
             cb.ax.tick_params(labelsize=font_size)
-            fig1 = ax.scatter(self.trench_lat_lon[:,0],self.trench_lat_lon[:,1],c='g')
             fig1 = ax.scatter(start_point_latlon[0],start_point_latlon[1],c='b')
             fig1 = ax.scatter(profile_lat_lon[:,0],profile_lat_lon[:,1],c='k')
             fig1 = ax.scatter(end_point_latlon[0],end_point_latlon[1],c='orange')
-            # fig1 = ax.scatter3D(trench_lat_lon[point,0],trench_lat_lon[point,1],c='m')
             ax.set_xlabel('lon', fontsize=font_size)
             ax.set_ylabel('lat', fontsize=font_size)
             #ax.set_xlim(164.0,175.0)
@@ -534,13 +472,12 @@ class Generate_Mesh:
         fig = plt.figure(figsize=(12,8))
         font_size=14
         ax = fig.add_subplot(111)
-        fig1 = ax.scatter(self.af[:,0],self.af[:,1],c=self.af[:,2],cmap='viridis',alpha=1)
+        fig1 = ax.scatter(self.af[:,0],self.af[:,1],c=self.af[:,2],cmap='cividis',alpha=1)
         cb = plt.colorbar(fig1)
         cb.draw_all()
         cb.set_alpha(1)
         cb.set_label(label='depth', fontsize=font_size)
         cb.ax.tick_params(labelsize=font_size)
-        # fig1 = ax.scatter(self.trench_lat_lon[:,0],self.trench_lat_lon[:,1],c='g')
         for k in range(len(labels)):
             fig1 = ax.scatter(start_points_lon_lat_arr[k][0],start_points_lon_lat_arr[k][1],c='b')
             fig1 = ax.scatter(end_points_lon_lat_arr[k][0],end_points_lon_lat_arr[k][1],c='orange')
@@ -549,6 +486,130 @@ class Generate_Mesh:
         ax.set_xlabel('lon', fontsize=font_size)
         ax.set_ylabel('lat', fontsize=font_size)
         ax.legend(['Slab data','Start point','End point','Profile'])
-        
+        # ax.set_xlim([170.0,180])
+        # ax.set_ylim([-45.0,-37.0])
         plt.savefig(fig_name)
         plt.show()
+
+
+    def plotting_slices_map_cartopy(self,start_points_lon_lat_arr,end_points_lon_lat_arr,profiles_lon_lat,labels,label_offset,fig_name):
+        
+        import cartopy
+        import cartopy.crs as ccrs
+        from cartopy import config
+        from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+        from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+        from cartopy import feature as cfeature
+        from cartopy.feature import NaturalEarthFeature, LAND, COASTLINE, OCEAN, LAKES, BORDERS
+        import matplotlib.ticker as mticker
+
+        fs = 12
+        fig,ax = plt.subplots(figsize=(8,8),frameon=True,subplot_kw={'projection':ccrs.PlateCarree()})
+        # ax = plt.axes(projection=ccrs.Mercator(central_longitude=135.0, min_latitude=31.0, max_latitude=39.0, globe=None))
+        # ax = plt.axes(projection=ccrs.Mercator())
+        ax.set_aspect('equal')
+        g1 = ax.gridlines(crs=ccrs.PlateCarree(), linewidth=1, linestyle='dashed', draw_labels=True, alpha=0.7)
+        g1.ylocator = mticker.FixedLocator(np.arange(-90.0, 90.0, 1.0))
+        g1.xlocator = mticker.FixedLocator(np.arange(-180.0, 180.0, 1))
+        g1.xformatter = LONGITUDE_FORMATTER
+        g1.yformatter = LATITUDE_FORMATTER
+
+        g1.top_labels = False 
+        g1.right_labels = False 
+
+        g1.xlabel_style = {'size': fs, 'color': 'k'}
+        g1.ylabel_style = {'size': fs, 'color': 'k'}
+
+        print(np.min(self.af[:,0]), np.max(self.af[:,0]))
+        print(np.min(self.af[:,1]), np.max(self.af[:,1]))
+        fig1 = ax.scatter(self.af[:,0],self.af[:,1],c=[self.af[:,2]],cmap='cividis',alpha=1, transform=ccrs.PlateCarree(),vmin=-400,vmax=0)
+        
+        # nankai
+        # ax.set_extent([131.0, 138.0, 31.0, 38.0],crs=ccrs.PlateCarree())
+
+        # cascadia
+        ax.set_extent([232.0, 242.0, 40.0, 50.0],crs=ccrs.PlateCarree())
+
+        # hikurangi
+        # ax.set_extent([173.0, 179.0, -43.0, -37.0],crs=ccrs.PlateCarree())
+
+
+        cb = plt.colorbar(fig1,shrink=0.8)
+        cb.draw_all()
+        cb.set_alpha(1)
+        # cb.set_clim([-400.0,0.0])
+        cb.set_label(label='Depth (km)', fontsize=fs)
+        cb.ax.tick_params(labelsize=fs)
+        # cb.ax.set_aspect(30)
+
+        for k in range(len(labels)):
+            fig1 = ax.plot(profiles_lon_lat[k][:,0],profiles_lon_lat[k][:,1],c='k', transform=ccrs.PlateCarree(),zorder=1)
+            # fig1 = ax.scatter(start_points_lon_lat_arr[k][0],start_points_lon_lat_arr[k][1],c='b', transform=ccrs.PlateCarree(),zorder=3)
+            # fig1 = ax.scatter(end_points_lon_lat_arr[k][0],end_points_lon_lat_arr[k][1],c='orange', transform=ccrs.PlateCarree(),zorder=3)
+            fig1 = ax.text(start_points_lon_lat_arr[k][0]+label_offset[0],start_points_lon_lat_arr[k][1]+label_offset[1],labels[k], transform=ccrs.PlateCarree(),zorder=3)
+
+        ax.coastlines();
+        # ax.gridlines(draw_labels=True)
+        # ax.set_aspect('equal')
+        # plt.gca().set_aspect('equal')
+        ax.set_aspect('equal')
+        plt.savefig(fig_name)
+        plt.show()
+
+    def convert_profile_back_lat_lon(self, xy):
+        """
+        Function to convert points from the model-coordinate space back to the lat lon space 
+        from which the profile was originally drawn. 
+        """
+        # undo vertical shift
+        print('self.vertical_shift', self.vertical_shift)
+        
+        pt = xy[:,:]
+        pt[:,-1] += self.vertical_shift
+
+        # convert along profile x y z to standard x y z 
+        ptb = pt[:,:]
+        
+        A = self.profile_xyz[0,:]
+        B = self.profile_xyz[-1,:]
+
+        print('A', A)
+        print('B', B)
+        rise = np.abs(B[1] - A[1])
+        run = np.abs(B[0] - A[0])
+        print('rise', rise)
+        print('run', run)
+        theta = np.arctan(run/rise)
+        print(np.rad2deg(theta))
+
+        xp = A[0] + ptb[:,0]*np.sin(theta) 
+        yp = A[1] - ptb[:,0]*np.cos(theta)
+
+        font_size = 18
+        fig = plt.figure(figsize=(10,6))
+        plt.scatter(xp,yp, c='red', marker='o')
+        plt.scatter(self.profile_xyz[:,0],self.profile_xyz[:,1], c='blue', marker='+')
+
+        plt.xlabel('x (km)', fontsize=font_size)
+        plt.ylabel('y (km)', fontsize=font_size)
+        plt.minorticks_on()
+        plt.grid(visible=True, which='both')
+        plt.axis('equal')
+        plt.show()
+
+        # convert x y z to lat lon 
+    
+        LL = np.zeros(xy.shape)
+        
+        R = 6371.0
+        lon = np.arctan2(yp,xp)
+        lat = np.arccos( yp / (R*np.sin(lon) ))
+        
+        lon /= np.pi/180.0
+        lat /= np.pi/180.0
+
+        LL[:,0] = lon + 360.0
+        LL[:,1] = lat
+        LL[:,2] = ptb[:,-1]
+
+        return LL

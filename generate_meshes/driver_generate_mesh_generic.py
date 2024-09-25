@@ -1,5 +1,3 @@
-# Script to generate a mesh for a specific subduction zone
-
 import generate_mesh
 import os
 import numpy as np
@@ -8,22 +6,15 @@ import pandas as pd
 import argparse
 import json as json
 import subprocess
+import pickle as pkl
 
 def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, args):
-
-    # Input specs which seemingly don't relate to the geometry - remove from Generate_Mesh?
-    start_line = 2878 # These appear to be set as attributes then over-ridden
-    end_line = 2931
-
-    fname_trench = os.path.join(data_path, "PlateBoundaries/", "PB2002_boundaries.dig.txt")
-
     beginning_strings, geo_info, constrain = generate_input_options(args)
     print(beginning_strings)
 
     # record options
     record = dict()
     record["slab2_file"] = fname_slab
-    record["trench_file"] = fname_trench
     record["beginning_strings"] = beginning_strings
     record["geo_info"] = geo_info
     record["constrain"] = constrain
@@ -37,12 +28,12 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
     start_points_arr = [[df["lon_start"][k],df["lat_start"][k]] for k in range(len(df))]
     end_points_arr = [[df["lon_end"][k],df["lat_end"][k]] for k in range(len(df))]
 
-    gm = generate_mesh.Generate_Mesh(fname_slab,fname_trench,constrain,start_line,end_line)
+    gm = generate_mesh.Generate_Mesh(fname_slab,constrain)
 
     profiles = []
     profiles_lat_lon_arr = []
     for k in range(len(labels)):
-        label = labels[k] # If we changed this to k and then `Labal` doesn't need to be defined in the csv file.
+        label = labels[k]
         start_point_lon_lat = start_points_arr[k]
         end_point_lon_lat = end_points_arr[k]
 
@@ -51,8 +42,23 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
 
         geo_filename = slab_id + '_profile_{}.geo'.format(label)
         
-        profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=False,write_msh=args.write_msh)
-        
+        profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=args.plot_verbose,write_msh=args.write_msh, adjust_depths=args.adjust_depths)
+        # mock = np.zeros((profile.shape[0],3))
+        # mock[:,0] = profile[:,0] # put along-slab x coords in 0th column
+        # mock[:,2] = profile[:,1] # put depth in last column
+        # check_profile_lat_lon = gm.convert_profile_back_lat_lon(mock)
+
+        # dump gm class to pkl
+        file = open(os.path.join(output_subfolder, slab_id + '_profile_{}'.format(label) + "_generate_mesh.pkl"), "wb")
+        pkl.dump(gm, file)
+        file.close()
+
+        # write vertical shift info to csv
+        with open(os.path.join(output_subfolder, "vertical_shift.csv"), "w") as fp:
+          fp.write('vertical_shift, '+str(gm.vertical_shift))
+        fp.close()
+
+
         fname_profile = slab_id + '_profile_{}.xy'.format(label) # Avoid using `z` as last character otherwise numpy will zip the file
         fname_profile = os.path.join(output_path, fname_profile)
         np.savetxt(fname_profile, profile)
@@ -82,7 +88,7 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
     else:
       label_offset = [0,0]
     print('label_offset',label_offset)
-    gm.plotting_slices_map(start_points_arr,end_points_arr,profiles_lat_lon_arr,labels,label_offset,fig_name)
+    gm.plotting_slices_map_cartopy(start_points_arr,end_points_arr,profiles_lat_lon_arr,labels,label_offset,fig_name)
 
     fig_name = slab_id + '_profiles.pdf'
     fig_name = os.path.join(output_path, fig_name)
@@ -138,7 +144,7 @@ class CMDA: # cmdline_args
 
 
 def parse_geo_info(p):
-  p.add_argument('--corner_depth', type=float, default=-38, required=False, help="--- (km)")
+  p.add_argument('--overplate_thickness', type=float, default=30, required=False, help="--- (km)")
 
 
 def parse_constraints(p):
@@ -150,8 +156,8 @@ def parse_constraints(p):
 def parse_beginning_strings(p):
   p.add_argument('--slab_thickness',  type=float, default = 50.0, required=False, help="Thickness of the slab (km)")
   p.add_argument('--domain_width_x',  type=float, default = 660.0, required=False, help="Width of the domain (km)")
-  p.add_argument('--extension_x',     type=float, default = 50.0, required=False, help="--- (km)")
-  p.add_argument('--z_in_out',        type=float, default = 150.0, required=False, help="Depth (km) of inflow/outflow transition on wedge side")
+  p.add_argument('--extension_x',     type=float, default = 150.0, required=False, help="--- (km)")
+  p.add_argument('--z_in_out',        type=float, default = 100.0, required=False, help="Depth (km) of inflow/outflow transition on wedge side")
   p.add_argument('--h_fine',          type=float, default = 0.5, required=False, help="Default value for fine resolution (km)")
   p.add_argument('--h_med',           type=float, default = 8.0, required=False, help="Default value for medium resolution (km)")
 
@@ -174,7 +180,7 @@ def generate_input_options(a):
    
   geo_info = dict()
   geo_info['beginning_strings'] = beginning_strings
-  geo_info['corner_depth'] = a.corner_depth
+  geo_info['overplate_thickness'] = a.overplate_thickness
 
   constrain = dict()
   constrain['constrain_TF'] = a.constrain_TF
@@ -251,6 +257,10 @@ if __name__ == '__main__':
     parser.add_argument('--output_path', type=str, default='./', required=False, help="Path where generated output will be written")
     # parser.add_argument('--write_msh', type=bool, required=True, help="Bool for whether or not to write .msh file.")
     parser.add_argument('--write_msh', action='store_true')
+    parser.add_argument('--adjust_depths', action='store_true')
+    parser.add_argument('--plot_verbose', action='store_true')
+
+
 
     # These options may also be readily parsed from an input file if
     # the command line argument approach becomes unmanageable.
@@ -260,8 +270,8 @@ if __name__ == '__main__':
     
     parser.parse_known_args(namespace=args)
     
-    fname_slab = determine_slab_data(args.profile_csv, args.data_path)
-    # fname_slab = "data/Slab2/cas_slab2_dep_02.24.18.xyz"
+    # fname_slab = determine_slab_data(args.profile_csv, args.data_path)
+    fname_slab = "data/Slab2/cas_slab2_dep_02.24.18.xyz"
     # fname_slab = "data/Slab2/ker_slab2_dep_02.24.18.xyz"
     # fname_slab = "data/Slab2/ryu_slab2_dep_02.26.18.xyz"
     
