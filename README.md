@@ -2,6 +2,10 @@
 
 This code was developed by Gabrielle Hobson and Dave May and is distributed under the GNU GPL v3 license. It is part of the Megathrust Modeling Framework ([MTMOD](https://sites.utexas.edu/mtmod/)), supported by NSF FRES grant EAR-2121568. 
 
+If you use this code, please cite it using this citation:
+
+Hobson, G. M., & May, D. A. (2024). Sensitivity analysis of the thermal structure within subduction zones using reduced-order modeling (v1.0.0) [Data set]. Zenodo. https://doi.org/10.5281/zenodo.12765667
+
 ## Install and environment 
 
 Starting from the command line, this github repository can be cloned like so: 
