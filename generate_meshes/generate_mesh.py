@@ -474,7 +474,7 @@ class Generate_Mesh:
         ax = fig.add_subplot(111)
         fig1 = ax.scatter(self.af[:,0],self.af[:,1],c=self.af[:,2],cmap='cividis',alpha=1)
         cb = plt.colorbar(fig1)
-        cb.draw_all()
+        cb.solids.set(alpha=1)
         cb.set_alpha(1)
         cb.set_label(label='depth', fontsize=font_size)
         cb.ax.tick_params(labelsize=font_size)
@@ -535,7 +535,7 @@ class Generate_Mesh:
 
 
         cb = plt.colorbar(fig1,shrink=0.8)
-        cb.draw_all()
+        cb.solids.set(alpha=1)
         cb.set_alpha(1)
         # cb.set_clim([-400.0,0.0])
         cb.set_label(label='Depth (km)', fontsize=fs)
