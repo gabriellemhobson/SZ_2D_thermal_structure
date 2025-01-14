@@ -35,7 +35,6 @@ elif (major_minor == "3.14") or (major_minor == "3.17"): # conda env version
     PETScOptions.set("ksp_type","preonly")
 else:
     print("This code is not compatible with versions of PETSc other than 3.12, 3.14, and 3.17. Exiting.")
-    exit()
 
 class PDE_Solver():
     def __init__(self,meshfile_name,vizfile_name,dfield_fname,slab_d_fname,indices_fname,**kwargs):
