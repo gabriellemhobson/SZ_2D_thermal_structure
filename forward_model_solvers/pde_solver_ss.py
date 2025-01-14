@@ -109,7 +109,7 @@ class PDE_Solver():
     def project_gmh(self, v, V, bcs=None, mesh=None,function=None):
         if (major_minor == "3.12"):
             function = project(v,V)
-        elif (major_minor == "3.14") or (major_minor == "3.17"):
+        else:
             import ufl
             __all__ = ['project']
             # Ensure we have a mesh and attach to measure
@@ -138,6 +138,7 @@ class PDE_Solver():
             # print('Starting solve in project_gmh()')
             solver.solve(function.vector(),b)
             # print('Finishing solve in project_gmh()')
+            
         return function
 
     def solve_slab_flow(self,eta_slab,eta_wedge):
