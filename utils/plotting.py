@@ -55,7 +55,7 @@ class Plotting():
             #     label='Downdip limit: x = '+str(round(self.iso_info[1][0],2))+' km, y = '\
             #         +str(round(self.iso_info[1][1],2))+' km, T = '\
             #         +str(round(self.iso_info[1][2],2))+' K')
-        plt.legend(loc='lower left',fontsize=font_size)
+        # plt.legend(loc='lower left',fontsize=font_size)
         plt.xticks(fontsize=font_size);
         plt.yticks(fontsize=font_size);
         # plt.xlim([0,350])
