@@ -103,6 +103,12 @@ for dir in jobs_log["path"]:
 
     lw.write(T, os.path.join(dir,"T.pkl"))
 
+    df = pd.DataFrame({"x":coords_x, "y":coords_y, "T(K)":result})
+    df.to_csv(os.path.join(dir, "temperature_field.csv"), sep=' ', index=False)
+
+    df = pd.DataFrame({"x":X, "y":Y, "T(K)":T})
+    df.to_csv(os.path.join(dir, "temperature_slab_interface.csv"), sep=' ', index=False)
+
     # print(T)
     # find iso info and write it
     iso_info,miss = find_iso.locate_isotherm_intersection(X,Y,T,int(1e6),iso_tol)
