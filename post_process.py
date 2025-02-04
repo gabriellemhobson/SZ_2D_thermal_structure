@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mplc
 import os
 from cmcrameri import cm
+import meshio
 from utils import load_write
 from utils import process_mesh
 from utils import find_isotherms
@@ -96,6 +97,8 @@ for dir in jobs_log["path"]:
         reorder_field = pm.reorder_data(os.path.join(dir,args.data_fname),M)
         lw.write(reorder_field,os.path.join(dir,"temperature_reordered.pkl"))
 
+        # breakpoint()
+
     # get T on the slab interface
     result = lw.load(os.path.join(dir, "temperature_reordered.pkl"))
     # result_arr.append(result)
@@ -108,6 +111,10 @@ for dir in jobs_log["path"]:
 
     df = pd.DataFrame({"x":X, "y":Y, "T(K)":T})
     df.to_csv(os.path.join(dir, "temperature_slab_interface.csv"), sep=' ', index=False)
+
+    msh = meshio.read(vizfile_name+".msh")
+    triangle_cells = msh.cells_dict["triangle"]
+    np.savetxt(os.path.join(dir, "triangulation.csv"), triangle_cells, fmt='%.i')
 
     # print(T)
     # find iso info and write it
