@@ -50,6 +50,7 @@ class Subduction(pm.ParametricModel):
         fp = open(os.path.join(base_dir, 'forward_subduction_detached.py'), "w")
         fp.write('import sys \n')
         fp.write('import os \n')
+        fp.write('import numpy as np \n')
         fp.write('from collections import OrderedDict \n')
         fp.write('sys.path.append("'+os.pardir+'") \n')
         if self.input_dict['solver'] == 'ss':

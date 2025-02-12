@@ -13,6 +13,8 @@ from utils import process_mesh
 from utils import find_isotherms
 from utils import plotting
 
+np.set_printoptions(legacy='1.25')
+
 lw = load_write.Load_Write()
 
 class CMDA: # cmdline_args
