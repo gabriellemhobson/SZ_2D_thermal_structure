@@ -3,15 +3,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import RBFInterpolator
 import scipy as sp
+from scipy.spatial import KDTree
 import copy as copy
 
 np.set_printoptions(legacy='1.25')
 
 class Generate_Mesh:
     '''
-    __init__() loads slab 2.0 and trench data and adds the attributes self.af and self.slab_norm.  
+    __init__() loads slab 2.0 and trench data and adds the attributes self.af and self.slab_norm.
+                It also sets the attribute abbrev_dist, which sets how far a profile can extrapolate 
+                outside of Slab2 data before being abbreviated. 
     '''
     def __init__(self,fname_slab,constrain):
+        self.abbrev_dist = 10.0 # km
+        
         print('Loading file', fname_slab)
         a = np.loadtxt(fname_slab, delimiter=',')
         af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
@@ -255,7 +260,7 @@ class Generate_Mesh:
             # f.write('Point(pt_num+1) = {' + str(profile[-1,0]) + '+extension_x, ' + str(profile[0,1]) + '+overplate_notch, ' + str(0.0) + ', ' + str(h[0]) + '};'); f.write('\n')
             
             # f.write('Point(pt_num) = {' + str(profile[0,0]) + ', ' + str(profile[0,1]) + '+overplate_notch, ' + str(0.0) + ', ' + str(h[0]) + '};'); f.write('\n')
-            f.write('Point(pt_num+1) = {' + str(profile[-1,0]) + '+extension_x, ' + str(profile[0,1]) + ', ' + str(0.0) + ', ' + str(h[0]) + '};'); f.write('\n')
+            f.write('Point(pt_num+1) = {' + str(profile[-1,0]) + '+extension_x, ' + str(profile[0,1]) + ', ' + str(0.0) + ', h_med};'); f.write('\n')
             
 
             f.write('Delete {Surface{1}; }'); f.write('\n')
@@ -383,7 +388,15 @@ class Generate_Mesh:
 
         profile_lat_lon = self.profile_rescale_lat_lon(self.af,l1s,l2s,ds)  
 
-        profile_xyz = self.convert_slab2_to_xyz(profile_lat_lon)
+        profile_xyz_ext = self.convert_slab2_to_xyz(profile_lat_lon)
+
+        # abbreviate profile where it goes beyond Slab2 data
+        af_xyz = self.convert_slab2_to_xyz(self.af)
+        tree = KDTree(af_xyz)
+        dist, I = tree.query(profile_xyz_ext)
+        profile_xyz = profile_xyz_ext[dist < self.abbrev_dist]
+        profile_lat_lon = profile_lat_lon[dist < self.abbrev_dist]
+
         self.profile_xyz = profile_xyz
         self.plot_profile(profile_xyz,'Profile in x,z coords') # here profile is x,y,z
         h = self.neighbour_distance(profile_xyz)
@@ -413,34 +426,17 @@ class Generate_Mesh:
         self.write_slice_to_geo(profile_flipped,h_smooth,N,pn,geo_filename,geo_info,write_msh=write_msh,adjust_depths=adjust_depths)
 
         if plot_verbose:
-
-            fig = plt.figure(figsize=(11,8))
-            font_size=14
-            ax = fig.add_subplot(111)
-            ax.set_aspect('equal')
-            fig1 = ax.scatter(self.af[:,0],self.af[:,1],c=self.af[:,2],cmap='viridis')
-            cb = plt.colorbar(fig1)
-            cb.set_label(label='depth (normalized)', fontsize=font_size)
-            cb.ax.tick_params(labelsize=font_size)
-            ax.set_xlabel('lon', fontsize=font_size)
-            ax.set_ylabel('lat', fontsize=font_size)
-            plt.minorticks_on()
-            plt.grid(visible=True,which='both')
-            plt.savefig("latlon_map_view.pdf")
-            plt.show()
-            plt.close('all')
-
             fig = plt.figure(figsize=(12,8))
             font_size=14
             ax = fig.add_subplot(111,projection='3d')
-            ax.scatter3D(self.slab_norm[:,0],self.slab_norm[:,1],self.slab_norm[:,2],c=self.slab_norm[:,2],cmap='viridis',alpha=0.04)
-            ax.scatter3D(start_point[0],start_point[1])
-            ax.scatter3D(end_point[0],end_point[1])
-            ax.scatter3D(l1s,l2s,ds)
+            ax.scatter3D(af_xyz[:,0],af_xyz[:,1],af_xyz[:,2],c=af_xyz[:,2],cmap='viridis',alpha=0.04)
+            # ax.scatter3D(start_point[0],start_point[1])
+            # ax.scatter3D(end_point[0],end_point[1])
+            ax.scatter3D(profile_xyz[:,0],profile_xyz[:,1],profile_xyz[:,2])
             ax.set_xlabel('x', fontsize=font_size)
             ax.set_ylabel('y', fontsize=font_size)
             # ax.view_init(azim=0, elev=90)
-            plt.title('Normalized slab data with profile')
+            plt.title('Slab data with profile in x, y, depth')
             plt.show()
             plt.close('all')
 
