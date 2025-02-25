@@ -93,10 +93,10 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
     fig_name = slab_id + '_profiles.pdf'
     fig_name = os.path.join(output_path, fig_name)
     buffer = 50
-    # xlim_max = np.max(np.array([np.max(p[:,0]) for p in profiles])) + buffer
-    # ylim_min = np.min(np.array([np.min(p[:,1]) for p in profiles])) - buffer
-    xlim_max = 750.0
-    ylim_min = -450.0
+    xlim_max = np.max(np.array([np.max(p[:,0]) for p in profiles])) + buffer
+    ylim_min = np.min(np.array([np.min(p[:,1]) for p in profiles])) - buffer
+    # xlim_max = 750.0
+    # ylim_min = -450.0
     fig = plt.figure(figsize=(12,12))
     font_size=12
     for k in range(len(labels)):
@@ -115,10 +115,10 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
 
     fig_name = slab_id + '_superimposed_profiles.pdf'
     fig_name = os.path.join(output_path, fig_name)
-    # xlim_max = np.max(np.array([np.max(p[:,0]) for p in profiles])) + buffer
-    # ylim_min = np.min(np.array([np.min(p[:,1]) for p in profiles])) - buffer
-    xlim_max = 700.0
-    ylim_min = -450.0
+    xlim_max = np.max(np.array([np.max(p[:,0]) for p in profiles])) + buffer
+    ylim_min = np.min(np.array([np.min(p[:,1]) for p in profiles])) - buffer
+    # xlim_max = 700.0
+    # ylim_min = -450.0
     fig = plt.figure(figsize=(10.6,6.75))
     font_size=18
     ax = fig.add_subplot(1,1,1)
@@ -270,8 +270,8 @@ if __name__ == '__main__':
     
     parser.parse_known_args(namespace=args)
     
-    # fname_slab = determine_slab_data(args.profile_csv, args.data_path)
-    fname_slab = "data/Slab2/cas_slab2_dep_02.24.18.xyz"
+    fname_slab = determine_slab_data(args.profile_csv, args.data_path)
+    # fname_slab = "data/Slab2/cas_slab2_dep_02.24.18.xyz"
     # fname_slab = "data/Slab2/ker_slab2_dep_02.24.18.xyz"
     # fname_slab = "data/Slab2/ryu_slab2_dep_02.26.18.xyz"
     

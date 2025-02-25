@@ -5,6 +5,8 @@ from scipy.interpolate import RBFInterpolator
 import scipy as sp
 import copy as copy
 
+np.set_printoptions(legacy='1.25')
+
 class Generate_Mesh:
     '''
     __init__() loads slab 2.0 and trench data and adds the attributes self.af and self.slab_norm.  
@@ -504,7 +506,8 @@ class Generate_Mesh:
         import matplotlib.ticker as mticker
 
         fs = 12
-        fig,ax = plt.subplots(figsize=(8,8),frameon=True,subplot_kw={'projection':ccrs.PlateCarree()})
+        clon = (np.min(self.af[:,0]) + np.max(self.af[:,0]))/2
+        fig,ax = plt.subplots(figsize=(10,10),frameon=True,subplot_kw={'projection':ccrs.PlateCarree(central_longitude=clon)})
         # ax = plt.axes(projection=ccrs.Mercator(central_longitude=135.0, min_latitude=31.0, max_latitude=39.0, globe=None))
         # ax = plt.axes(projection=ccrs.Mercator())
         ax.set_aspect('equal')
@@ -528,13 +531,14 @@ class Generate_Mesh:
         # ax.set_extent([131.0, 138.0, 31.0, 38.0],crs=ccrs.PlateCarree())
 
         # cascadia
-        ax.set_extent([232.0, 242.0, 40.0, 50.0],crs=ccrs.PlateCarree())
+        # ax.set_extent([232.0, 242.0, 40.0, 50.0],crs=ccrs.PlateCarree())
 
         # hikurangi
         # ax.set_extent([173.0, 179.0, -43.0, -37.0],crs=ccrs.PlateCarree())
 
+        ax.set_extent([np.min(self.af[:,0]), np.max(self.af[:,0]), np.min(self.af[:,1]), np.max(self.af[:,1])],crs=ccrs.PlateCarree())
 
-        cb = plt.colorbar(fig1,shrink=0.8)
+        cb = plt.colorbar(fig1,shrink=0.6)
         cb.solids.set(alpha=1)
         cb.set_alpha(1)
         # cb.set_clim([-400.0,0.0])
