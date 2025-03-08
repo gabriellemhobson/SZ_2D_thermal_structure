@@ -29,7 +29,6 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
     end_points_arr = [[df["lon_end"][k],df["lat_end"][k]] for k in range(len(df))]
 
     gm = generate_mesh.Generate_Mesh(fname_slab,constrain)
-
     profiles = []
     profiles_lat_lon_arr = []
     for k in range(len(labels)):
@@ -42,12 +41,8 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
 
         geo_filename = slab_id + '_profile_{}.geo'.format(label)
         
-        profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=args.plot_verbose,write_msh=args.write_msh, adjust_depths=args.adjust_depths)
-        # mock = np.zeros((profile.shape[0],3))
-        # mock[:,0] = profile[:,0] # put along-slab x coords in 0th column
-        # mock[:,2] = profile[:,1] # put depth in last column
-        # check_profile_lat_lon = gm.convert_profile_back_lat_lon(mock)
-
+        profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=args.plot_verbose,write_msh=args.write_msh, adjust_depths=args.adjust_depths, choose_vaxis=args.choose_vaxis)
+        
         # dump gm class to pkl
         file = open(os.path.join(output_subfolder, slab_id + '_profile_{}'.format(label) + "_generate_mesh.pkl"), "wb")
         pkl.dump(gm, file)
@@ -117,7 +112,7 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
     fig_name = os.path.join(output_path, fig_name)
     xlim_max = np.max(np.array([np.max(p[:,0]) for p in profiles])) + buffer
     ylim_min = np.min(np.array([np.min(p[:,1]) for p in profiles])) - buffer
-    # xlim_max = 700.0
+    # xlim_max = 600.0
     # ylim_min = -450.0
     fig = plt.figure(figsize=(10.6,6.75))
     font_size=18
@@ -144,7 +139,7 @@ class CMDA: # cmdline_args
 
 
 def parse_geo_info(p):
-  p.add_argument('--overplate_thickness', type=float, default=30, required=False, help="--- (km)")
+  p.add_argument('--overplate_thickness', type=float, default=35, required=False, help="--- (km)")
 
 
 def parse_constraints(p):
@@ -247,6 +242,34 @@ def determine_slab_data(profiles, data_path):
 
   return os.path.join(spath, matched_slab[0])
 
+def test_generate_mesh(fname_slab, args):
+  beginning_strings, geo_info, constrain = generate_input_options(args)
+  print(beginning_strings)
+
+  gm = generate_mesh.Generate_Mesh(fname_slab,constrain)
+
+  passA, profile_A, profile_latlon_A = gm.run_testA()
+  print('Passed test A:', passA)
+
+  passB, profile_B, profile_latlon_B = gm.run_testB()
+  print('Passed test B:', passB)
+
+  passC, profile_C, profile_latlon_C = gm.run_testC()
+  print('Passed test C:', passC)
+
+  passD, profile_D, profile_latlon_D = gm.run_testD()
+  print('Passed test D:', passD)
+
+  gm.run_testE()
+  print('Passed test E? Look at output.')
+
+  passF = gm.run_testF()
+  print('Passed test F:', passF)
+
+  return
+      
+        
+
 
 if __name__ == '__main__':
     args = CMDA()
@@ -259,6 +282,7 @@ if __name__ == '__main__':
     parser.add_argument('--write_msh', action='store_true')
     parser.add_argument('--adjust_depths', action='store_true')
     parser.add_argument('--plot_verbose', action='store_true')
+    parser.add_argument('--choose_vaxis',  type=str, required=True, help="Options are 'plane' or 'slab2', chooses which depth to use as vertical coordinate for the profile.")
 
 
 
@@ -276,6 +300,11 @@ if __name__ == '__main__':
     # fname_slab = "data/Slab2/ryu_slab2_dep_02.26.18.xyz"
     
     os.makedirs(args.output_path, exist_ok=True)
+
+    print('write_msh properly input? ', args.write_msh)
+
+    # uncomment to run tests
+    # test_generate_mesh(fname_slab, args)
 
     slice_generic(args.profile_csv, fname_slab, args.data_path, args.output_path, args.slab_name, args)
 

@@ -1,0 +1,4 @@
+# parameter name, min value, max value, unit
+mu 0.0 0.14 frac
+slab_vel 3.0 3.0 ~
+slab_age 100.0 100.0 ~
