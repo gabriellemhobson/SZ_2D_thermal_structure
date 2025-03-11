@@ -27,12 +27,9 @@ class Parameters():
         # self.A_disl = 28968.6 # Pa s 
 
         # defining params to match Hirth and Kohlstedt
-        self.A_diff = 1.0e6 # units to match Hirth and Kohlstedt
-        self.A_disl = 90 # units to match Hirth and Kohlstedt
-        self.d = 10000 # grain size in microns
-        self.m = 3.0 # grain size exponent
-        self.C_OH = 1000 # OH concentration, ppm-H/Si
-        self.r = 1 # C_OH exponent
+        # A_diff and A_disl are combined prefactors
+        self.A_diff = 1.3e4 
+        self.A_disl = 7.7e-5 
         self.E_diff = 335 * 1e3 # J/mol
         self.E_disl = 540e3 # J/mol
         self.R = 8.3145 # J/mol K

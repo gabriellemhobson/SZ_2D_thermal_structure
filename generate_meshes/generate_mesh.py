@@ -406,7 +406,7 @@ class Generate_Mesh:
         shifted = shifted[:,::-1]
         shifted[:,0] = np.abs(shifted[:,0])
         if choose_vaxis == 'plane':
-            self.vertical_shift = shifted[0,1]
+            self.vertical_shift = 0
         shifted[:,1] -= shifted[0,1]
 
         # if using plane y axis
@@ -431,6 +431,8 @@ class Generate_Mesh:
         ax.set_aspect('equal')
         plt.legend(fontsize=18)
         plt.grid(visible=True, which='major')
+        plt.xlabel("x' (km)")
+        plt.ylabel("y' (km)")
         plt.savefig("profile_with_surface.png", dpi=600)
         plt.show()
 
