@@ -434,7 +434,7 @@ class Generate_Mesh:
         plt.xlabel("x' (km)")
         plt.ylabel("y' (km)")
         plt.savefig("profile_with_surface.png", dpi=600)
-        plt.show()
+        # plt.show()
 
         # choose which coordinates to use
         if choose_vaxis == 'slab2':
@@ -510,7 +510,7 @@ class Generate_Mesh:
         plt.xlabel('Longitude')
         plt.ylabel('Latitude')
         plt.title("Test A input")
-        plt.show()
+        # plt.show()
 
         ds = np.zeros(profile_lat_lon.shape[0])
         profile_geog = np.vstack([profile_lat_lon.T, ds]).T
