@@ -1,4 +1,7 @@
 # parameter name, min value, max value, unit
-mu 0.0 0.14 frac
-slab_vel 3.0 3.0 ~
-slab_age 100.0 100.0 ~
+slab_vel 3.0 4.0 cm/yr
+mu 0.0 0.14 ~
+ddc 70.0 80.0 km
+deg_pc 0.0 0.1 frac
+Tb 1550 1750 K
+slab_age 90.0 110.0 Myr
