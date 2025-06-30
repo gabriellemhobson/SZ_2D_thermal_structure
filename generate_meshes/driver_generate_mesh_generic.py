@@ -8,13 +8,14 @@ import json as json
 import subprocess
 import pickle as pkl
 
-def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, args):
+def slice_generic(profile_fname, spath, matched_slab, data_path, output_path, slab_id, args):
     beginning_strings, geo_info, constrain = generate_input_options(args)
     print(beginning_strings)
 
     # record options
     record = dict()
-    record["slab2_file"] = fname_slab
+    record["spath"] = spath
+    record["matched_slab"] = matched_slab
     record["beginning_strings"] = beginning_strings
     record["geo_info"] = geo_info
     record["constrain"] = constrain
@@ -28,7 +29,7 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
     start_points_arr = [[df["lon_start"][k],df["lat_start"][k]] for k in range(len(df))]
     end_points_arr = [[df["lon_end"][k],df["lat_end"][k]] for k in range(len(df))]
 
-    gm = generate_mesh.Generate_Mesh(fname_slab,constrain)
+    gm = generate_mesh.Generate_Mesh(spath, matched_slab, constrain)
     profiles = []
     profiles_lat_lon_arr = []
     for k in range(len(labels)):
@@ -41,7 +42,7 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
 
         geo_filename = slab_id + '_profile_{}.geo'.format(label)
         
-        profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=args.plot_verbose,write_msh=args.write_msh, adjust_depths=args.adjust_depths, choose_vaxis=args.choose_vaxis)
+        profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=args.plot_verbose,write_msh=args.write_msh, adjust_depths=args.adjust_depths, choose_vaxis=args.choose_vaxis, extend_depth=args.extend_depth)
         
         # dump gm class to pkl
         file = open(os.path.join(output_subfolder, slab_id + '_profile_{}'.format(label) + "_generate_mesh.pkl"), "wb")
@@ -236,11 +237,10 @@ def determine_slab_data(profiles, data_path):
   elif matches > 1:
     print("The bounding box for the profiles are contained in more than one slab defined within the Slab2 data.\n")
     print("The following slabs contain the profiles:\n", matched_slab)
-    raise RuntimeError("Profile bounding box contained in multiple slab data files.")
   else:
     print("Profiles bounding box contained within:", matched_slab[0])
 
-  return os.path.join(spath, matched_slab[0])
+  return spath, matched_slab
 
 def test_generate_mesh(fname_slab, args):
   beginning_strings, geo_info, constrain = generate_input_options(args)
@@ -283,6 +283,7 @@ if __name__ == '__main__':
     parser.add_argument('--adjust_depths', action='store_true')
     parser.add_argument('--plot_verbose', action='store_true')
     parser.add_argument('--choose_vaxis',  type=str, required=True, help="Options are 'plane' or 'slab2', chooses which depth to use as vertical coordinate for the profile.")
+    parser.add_argument('--extend_depth',  type=float, default=None, help="Depth to which to extend the profile. Should be None or a negative number.")
 
 
 
@@ -294,7 +295,7 @@ if __name__ == '__main__':
     
     parser.parse_known_args(namespace=args)
     
-    fname_slab = determine_slab_data(args.profile_csv, args.data_path)
+    spath, matched_slab = determine_slab_data(args.profile_csv, args.data_path)
     # fname_slab = "data/Slab2/cas_slab2_dep_02.24.18.xyz"
     # fname_slab = "data/Slab2/ker_slab2_dep_02.24.18.xyz"
     # fname_slab = "data/Slab2/ryu_slab2_dep_02.26.18.xyz"
@@ -306,5 +307,5 @@ if __name__ == '__main__':
     # uncomment to run tests
     # test_generate_mesh(fname_slab, args)
 
-    slice_generic(args.profile_csv, fname_slab, args.data_path, args.output_path, args.slab_name, args)
+    slice_generic(args.profile_csv, spath, matched_slab, args.data_path, args.output_path, args.slab_name, args)
 

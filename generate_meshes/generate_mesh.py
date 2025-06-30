@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import RBFInterpolator
 from scipy.spatial import KDTree
 import copy as copy
+import os
 import pyproj
 
 np.set_printoptions(legacy='1.25')
@@ -14,16 +15,11 @@ class Generate_Mesh:
                 outside of Slab2 data before being abbreviated. 
                 It also sets the attribute R, radius of the earth in km. 
     '''
-    def __init__(self, fname_slab, constrain):
+    def __init__(self, spath, matched_slab, constrain):
         self.abbrev_dist = 10.0 # km
         self.R = 6371.0
-        
-        print('Loading file', fname_slab)
-        a = np.loadtxt(fname_slab, delimiter=',')
-        af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
-
-        self.af = af        
-        self.slab_norm = self.normalize_lat_lon_data(self.af)
+        self.spath = spath
+        self.matched_slab = matched_slab
 
     def normalize_lat_lon_data(self,af):
         data = copy.deepcopy(af) # this should be unnecessary
@@ -363,9 +359,46 @@ class Generate_Mesh:
         profile_lat_lon = np.vstack([sp, profile_lat_lon, ep])
         return profile_lat_lon
 
-    def run_generate_mesh(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,slab_thickness,plot_verbose,write_msh=False,adjust_depths=False,choose_vaxis='plane'):
+    def run_generate_mesh(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,slab_thickness,plot_verbose,write_msh=False,adjust_depths=False,choose_vaxis='plane',extend_depth=None):
 
         profile_lat_lon = self.sample_along_greatcircle(start_point_latlon, end_point_latlon)
+
+        # determine which slab is shallower
+        if len(self.matched_slab) > 1:
+            overlap = {}
+            for slab_name in self.matched_slab:
+                fname_slab = os.path.join(self.spath, slab_name)
+                print('Loading file to check which slab is shallower:', fname_slab)
+                a = np.loadtxt(fname_slab, delimiter=',')
+                af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
+                slab_norm = self.normalize_lat_lon_data(af)
+                # normalize those points
+                norm_profile = self.normalize_in_given_box(af, profile_lat_lon)
+
+                # evaluate RBF along those points
+                ds = self.create_RBF(slab_norm,norm_profile[:,0],norm_profile[:,1],coarse=10)
+
+                profile_geog = self.profile_rescale_lat_lon(af,norm_profile[:,0],norm_profile[:,1],ds) 
+
+                # abbreviate profile where it goes beyond Slab2 data
+                tree = KDTree(af)
+                dist, I = tree.query(profile_geog)
+                profile_geog = profile_geog[dist < self.abbrev_dist]
+
+                overlap[fname_slab] = profile_geog[10, -1]
+            # take the shallowest one
+            fname_slab = max(overlap, key=overlap.get)
+            print("At 10 km distance from the start of the profile,", fname_slab, "is shallower.")
+        else:
+            fname_slab = self.matched_slab[0]
+        
+        # now proceed with profiling
+        print('Loading file', fname_slab)
+        a = np.loadtxt(fname_slab, delimiter=',')
+        af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
+        slab_norm = self.normalize_lat_lon_data(af)
+        self.af = af
+        self.slab_norm = self.normalize_lat_lon_data(self.af)
 
         # normalize those points
         norm_profile = self.normalize_in_given_box(self.af, profile_lat_lon)
@@ -443,6 +476,31 @@ class Generate_Mesh:
             profile = profile_plane
         else:
             raise ValueError('Argument choose_vaxis must be "slab2" or "plane". ')
+
+        if extend_depth is not None:
+            # extend profile to arbitrary depth
+            y_arr = np.linspace(profile[-1,1], extend_depth, int(np.abs(extend_depth-profile[-1,1])))
+            # fit line through lower 50 km
+            I = np.argmin(np.abs(profile[:,1] - profile[-1,1] - 50))
+            pfit = np.polyfit(profile[I:,1], profile[I:,0], 1)
+            x_arr = np.polyval(pfit, y_arr)
+
+            # check if slope of line is different from slope of last segment (kink)
+            last = np.polyfit(profile[-2:,1], profile[-2:,0], 1)
+            diff_intercept = np.abs(pfit[1] - last[1])
+            diff_angle = np.abs(np.rad2deg(np.arctan(pfit[0])) - np.rad2deg(np.arctan(last[0])) )
+            if (diff_angle < 5) & (diff_intercept < 10.0):
+                # if similar, extend straightforwardly
+                profile = np.vstack([profile, np.vstack([x_arr, y_arr]).T])
+            else: 
+                # if different, blend lines to remove kink
+                extend_x = np.polyval(last, y_arr)
+                d_x = x_arr - extend_x
+                blend = np.linspace(0.0, 1.0, int(y_arr.shape[0]/2))
+                blend = np.hstack([blend, np.ones(y_arr.shape[0]-blend.shape[0])])
+                blend_x = extend_x + blend*d_x
+
+                profile = np.vstack([profile, np.vstack([blend_x, y_arr]).T])
 
         pn = self.get_point_normal(profile,slab_thickness)
         self.write_slice_to_geo(profile,pn,geo_filename,geo_info,write_msh=write_msh,adjust_depths=adjust_depths)
