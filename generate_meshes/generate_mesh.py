@@ -477,8 +477,9 @@ class Generate_Mesh:
         else:
             raise ValueError('Argument choose_vaxis must be "slab2" or "plane". ')
 
-        if extend_depth is not None:
+        if extend_depth is not None and extend_depth < profile[-1,1]:
             # extend profile to arbitrary depth
+            print('Extending profile from depth', profile[-1,1], 'to depth', extend_depth)
             y_arr = np.linspace(profile[-1,1], extend_depth, int(np.abs(extend_depth-profile[-1,1])))
             # fit line through lower 50 km
             I = np.argmin(np.abs(profile[:,1] - profile[-1,1] - 50))
