@@ -107,7 +107,8 @@ def slice_generic(profile_fname, spath, matched_slab, data_path, output_path, sl
         plt.minorticks_on()
         plt.grid(visible=True, which='both')
     plt.savefig(fig_name)
-    plt.show()
+    plt.close()
+    # plt.show()
 
     fig_name = slab_id + '_superimposed_profiles.pdf'
     fig_name = os.path.join(output_path, fig_name)
@@ -132,7 +133,8 @@ def slice_generic(profile_fname, spath, matched_slab, data_path, output_path, sl
     plt.grid(visible=True, which='major')
     plt.title(slab_id + ' profiles',fontsize=font_size)
     plt.savefig(fig_name)
-    plt.show()
+    plt.close()
+    # plt.show()
 
 
 class CMDA: # cmdline_args
@@ -230,7 +232,6 @@ def determine_slab_data(profiles, data_path):
       if target_box_la[0] >= box_la[0] and target_box_la[1] <= box_la[1]:
         matches += 1
         matched_slab.append(sfile)
-
   if matches == 0:
     print("The bounding box for the profiles are not contained with any slab defined within the Slab2 data given by:\n", flist)
     raise RuntimeError("No match between profile bounding box and slab data.")
@@ -303,6 +304,7 @@ if __name__ == '__main__':
     os.makedirs(args.output_path, exist_ok=True)
 
     print('write_msh properly input? ', args.write_msh)
+    print('Extend depth:', args.extend_depth)
 
     # uncomment to run tests
     # test_generate_mesh(fname_slab, args)

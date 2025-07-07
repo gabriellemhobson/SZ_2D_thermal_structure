@@ -16,7 +16,7 @@ class Generate_Mesh:
                 It also sets the attribute R, radius of the earth in km. 
     '''
     def __init__(self, spath, matched_slab, constrain):
-        self.abbrev_dist = 10.0 # km
+        self.abbrev_dist = 0.1 #deg
         self.R = 6371.0
         self.spath = spath
         self.matched_slab = matched_slab
@@ -308,7 +308,8 @@ class Generate_Mesh:
         ax.coastlines();
         ax.set_aspect('equal')
         plt.savefig(fig_name)
-        plt.show()
+        plt.close()
+        # plt.show()
 
     def convert_geographic_to_cartesian(self, geo_in):
         '''
@@ -354,7 +355,7 @@ class Generate_Mesh:
         profile_lat_lon = np.array(lonlats)
 
         if np.any(profile_lat_lon[:,0] < 0):
-            profile_lat_lon[:,0] += 360.0
+            profile_lat_lon[profile_lat_lon[:,0] < 0,0] += 360.0
 
         profile_lat_lon = np.vstack([sp, profile_lat_lon, ep])
         return profile_lat_lon
@@ -379,18 +380,20 @@ class Generate_Mesh:
                 ds = self.create_RBF(slab_norm,norm_profile[:,0],norm_profile[:,1],coarse=10)
 
                 profile_geog = self.profile_rescale_lat_lon(af,norm_profile[:,0],norm_profile[:,1],ds) 
-
                 # abbreviate profile where it goes beyond Slab2 data
-                tree = KDTree(af)
-                dist, I = tree.query(profile_geog)
-                profile_geog = profile_geog[dist < self.abbrev_dist]
-
-                overlap[fname_slab] = profile_geog[10, -1]
+                tree = KDTree(af[:,0:2])
+                dist, I = tree.query(profile_geog[:,0:2])
+                if dist[0] > 0.5:
+                    pass
+                else:
+                    profile_geog = profile_geog[dist < self.abbrev_dist]
+                    overlap[fname_slab] = profile_geog[10, -1]
             # take the shallowest one
+            print('overlap', overlap)
             fname_slab = max(overlap, key=overlap.get)
-            print("At 10 km distance from the start of the profile,", fname_slab, "is shallower.")
+            print("At 10 km distance from the start of the profile,", fname_slab, "is nearby and shallower.")
         else:
-            fname_slab = self.matched_slab[0]
+            fname_slab = os.path.join(self.spath, self.matched_slab[0])
         
         # now proceed with profiling
         print('Loading file', fname_slab)
@@ -409,9 +412,12 @@ class Generate_Mesh:
         profile_geog = self.profile_rescale_lat_lon(self.af,norm_profile[:,0],norm_profile[:,1],ds) 
 
         # abbreviate profile where it goes beyond Slab2 data
-        tree = KDTree(self.af)
-        dist, I = tree.query(profile_geog)
+        tree = KDTree(self.af[:,0:2])
+        dist, I = tree.query(profile_geog[:,0:2])
         profile_geog = profile_geog[dist < self.abbrev_dist]
+        
+        # save geog profile to file
+        np.savetxt(geo_filename.split("_")[0]+"_Path.txt", profile_geog[:,0:2])
         
         # convert to xyz
         profile_xyz = self.convert_geographic_to_cartesian(profile_geog)
@@ -467,6 +473,7 @@ class Generate_Mesh:
         plt.xlabel("x' (km)")
         plt.ylabel("y' (km)")
         plt.savefig("profile_with_surface.png", dpi=600)
+        plt.close()
         # plt.show()
 
         # choose which coordinates to use
@@ -481,8 +488,8 @@ class Generate_Mesh:
             # extend profile to arbitrary depth
             print('Extending profile from depth', profile[-1,1], 'to depth', extend_depth)
             y_arr = np.linspace(profile[-1,1], extend_depth, int(np.abs(extend_depth-profile[-1,1])))
-            # fit line through lower 50 km
-            I = np.argmin(np.abs(profile[:,1] - profile[-1,1] - 50))
+            # fit line through lower 10 km
+            I = np.argmin(np.abs(profile[:,1] - profile[-1,1] - 10))
             pfit = np.polyfit(profile[I:,1], profile[I:,0], 1)
             x_arr = np.polyval(pfit, y_arr)
 
@@ -500,7 +507,6 @@ class Generate_Mesh:
                 blend = np.linspace(0.0, 1.0, int(y_arr.shape[0]/2))
                 blend = np.hstack([blend, np.ones(y_arr.shape[0]-blend.shape[0])])
                 blend_x = extend_x + blend*d_x
-
                 profile = np.vstack([profile, np.vstack([blend_x, y_arr]).T])
 
         pn = self.get_point_normal(profile,slab_thickness)
