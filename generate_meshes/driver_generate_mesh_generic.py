@@ -7,6 +7,25 @@ import argparse
 import json as json
 import subprocess
 import pickle as pkl
+import netCDF4 as nc4
+from scipy.interpolate import RBFInterpolator
+
+def get_zbc(sb18_fname, lon_ep, lat_ep):
+  # --------------------------------------------
+  # Steinberger & Becker (2018) loading data
+  # creates RBF, evaluates at end of profile path
+  # to get lithospheric thickness for z_bc model param
+  # --------------------------------------------
+  ds = nc4.Dataset(sb18_fname, 'r')
+
+  lon_sb18 = np.array(ds.variables["lon"])
+  lat_sb18 = np.array(ds.variables["lat"])
+  z_sb18 = np.array(ds.variables["z"])
+  LON, LAT = np.meshgrid(lon_sb18, lat_sb18)
+  sb18_rbf = RBFInterpolator(np.vstack([LON.flatten()[::100], LAT.flatten()[::100]]).T, z_sb18.flatten()[::100])
+
+  zbc = sb18_rbf(np.array([[lon_ep, lat_ep]]))[0]
+  return zbc
 
 def slice_generic(profile_fname, spath, matched_slab, data_path, output_path, slab_id, args):
     beginning_strings, geo_info, constrain = generate_input_options(args)
@@ -42,7 +61,10 @@ def slice_generic(profile_fname, spath, matched_slab, data_path, output_path, sl
 
         geo_filename = slab_id + '_profile_{}.geo'.format(label)
         
-        profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=args.plot_verbose,write_msh=args.write_msh, adjust_depths=args.adjust_depths, choose_vaxis=args.choose_vaxis, extend_depth=args.extend_depth)
+        if args.choose_haxis == "plane":
+          profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=args.plot_verbose,write_msh=args.write_msh, adjust_depths=args.adjust_depths, choose_vaxis=args.choose_vaxis, extend_depth=args.extend_depth, topo_correct=args.topo_correct)
+        elif args.choose_haxis == "gc":
+          profile, profile_lat_lon = gm.run_generate_mesh_gcdist(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=args.plot_verbose,write_msh=args.write_msh, adjust_depths=args.adjust_depths, choose_vaxis=args.choose_vaxis, extend_depth=args.extend_depth, topo_correct=args.topo_correct)
         
         # dump gm class to pkl
         file = open(os.path.join(output_subfolder, slab_id + '_profile_{}'.format(label) + "_generate_mesh.pkl"), "wb")
@@ -284,7 +306,9 @@ if __name__ == '__main__':
     parser.add_argument('--adjust_depths', action='store_true')
     parser.add_argument('--plot_verbose', action='store_true')
     parser.add_argument('--choose_vaxis',  type=str, required=True, help="Options are 'plane' or 'slab2', chooses which depth to use as vertical coordinate for the profile.")
+    parser.add_argument('--choose_haxis',  type=str, required=True, help="Options are 'plane' or 'gc', chooses whether to use the plane horizontal coordinate or great circle distance.")
     parser.add_argument('--extend_depth',  type=float, default=None, help="Depth to which to extend the profile. Should be None or a negative number.")
+    parser.add_argument('--topo_correct', action='store_true')
 
 
 
@@ -311,3 +335,8 @@ if __name__ == '__main__':
 
     slice_generic(args.profile_csv, spath, matched_slab, args.data_path, args.output_path, args.slab_name, args)
 
+    sb18_fname = "/Users/ghobson/Documents/Steinberger_Becker_2018_Data/sb18_lthick/mean_no_slabs.l.grd"
+    df = pd.read_csv(args.slab_name+"_PATH.txt", sep=" ", header=None, names=["lon", "lat"])
+    zbc = get_zbc(sb18_fname, np.array(df["lon"])[-1], np.array(df["lat"])[-1])
+    with open("input_param_"+args.slab_name+".csv", 'a') as file:
+            file.write("z_bc "+str(np.round(zbc,0)) + " " + str(np.round(zbc,0)) + " km" + '\n')
