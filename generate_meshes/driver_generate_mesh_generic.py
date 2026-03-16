@@ -7,14 +7,34 @@ import argparse
 import json as json
 import subprocess
 import pickle as pkl
+import netCDF4 as nc4
+from scipy.interpolate import RBFInterpolator
 
-def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, args):
+def get_zbc(sb18_fname, lon_ep, lat_ep):
+  # --------------------------------------------
+  # Steinberger & Becker (2018) loading data
+  # creates RBF, evaluates at end of profile path
+  # to get lithospheric thickness for z_bc model param
+  # --------------------------------------------
+  ds = nc4.Dataset(sb18_fname, 'r')
+
+  lon_sb18 = np.array(ds.variables["lon"])
+  lat_sb18 = np.array(ds.variables["lat"])
+  z_sb18 = np.array(ds.variables["z"])
+  LON, LAT = np.meshgrid(lon_sb18, lat_sb18)
+  sb18_rbf = RBFInterpolator(np.vstack([LON.flatten()[::100], LAT.flatten()[::100]]).T, z_sb18.flatten()[::100])
+
+  zbc = sb18_rbf(np.array([[lon_ep, lat_ep]]))[0]
+  return zbc
+
+def slice_generic(profile_fname, spath, matched_slab, data_path, output_path, slab_id, args):
     beginning_strings, geo_info, constrain = generate_input_options(args)
     print(beginning_strings)
 
     # record options
     record = dict()
-    record["slab2_file"] = fname_slab
+    record["spath"] = spath
+    record["matched_slab"] = matched_slab
     record["beginning_strings"] = beginning_strings
     record["geo_info"] = geo_info
     record["constrain"] = constrain
@@ -28,7 +48,7 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
     start_points_arr = [[df["lon_start"][k],df["lat_start"][k]] for k in range(len(df))]
     end_points_arr = [[df["lon_end"][k],df["lat_end"][k]] for k in range(len(df))]
 
-    gm = generate_mesh.Generate_Mesh(fname_slab,constrain)
+    gm = generate_mesh.Generate_Mesh(spath, matched_slab, constrain)
     profiles = []
     profiles_lat_lon_arr = []
     for k in range(len(labels)):
@@ -41,7 +61,10 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
 
         geo_filename = slab_id + '_profile_{}.geo'.format(label)
         
-        profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=args.plot_verbose,write_msh=args.write_msh, adjust_depths=args.adjust_depths, choose_vaxis=args.choose_vaxis)
+        if args.choose_haxis == "plane":
+          profile, profile_lat_lon = gm.run_generate_mesh(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=args.plot_verbose,write_msh=args.write_msh, adjust_depths=args.adjust_depths, choose_vaxis=args.choose_vaxis, extend_depth=args.extend_depth, topo_correct=args.topo_correct)
+        elif args.choose_haxis == "gc":
+          profile, profile_lat_lon = gm.run_generate_mesh_gcdist(geo_filename,geo_info,start_point_lon_lat,end_point_lon_lat,args.slab_thickness,plot_verbose=args.plot_verbose,write_msh=args.write_msh, adjust_depths=args.adjust_depths, choose_vaxis=args.choose_vaxis, extend_depth=args.extend_depth, topo_correct=args.topo_correct)
         
         # dump gm class to pkl
         file = open(os.path.join(output_subfolder, slab_id + '_profile_{}'.format(label) + "_generate_mesh.pkl"), "wb")
@@ -106,7 +129,8 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
         plt.minorticks_on()
         plt.grid(visible=True, which='both')
     plt.savefig(fig_name)
-    plt.show()
+    plt.close()
+    # plt.show()
 
     fig_name = slab_id + '_superimposed_profiles.pdf'
     fig_name = os.path.join(output_path, fig_name)
@@ -131,7 +155,8 @@ def slice_generic(profile_fname, fname_slab, data_path, output_path, slab_id, ar
     plt.grid(visible=True, which='major')
     plt.title(slab_id + ' profiles',fontsize=font_size)
     plt.savefig(fig_name)
-    plt.show()
+    plt.close()
+    # plt.show()
 
 
 class CMDA: # cmdline_args
@@ -229,18 +254,16 @@ def determine_slab_data(profiles, data_path):
       if target_box_la[0] >= box_la[0] and target_box_la[1] <= box_la[1]:
         matches += 1
         matched_slab.append(sfile)
-
   if matches == 0:
     print("The bounding box for the profiles are not contained with any slab defined within the Slab2 data given by:\n", flist)
     raise RuntimeError("No match between profile bounding box and slab data.")
   elif matches > 1:
     print("The bounding box for the profiles are contained in more than one slab defined within the Slab2 data.\n")
     print("The following slabs contain the profiles:\n", matched_slab)
-    raise RuntimeError("Profile bounding box contained in multiple slab data files.")
   else:
     print("Profiles bounding box contained within:", matched_slab[0])
 
-  return os.path.join(spath, matched_slab[0])
+  return spath, matched_slab
 
 def test_generate_mesh(fname_slab, args):
   beginning_strings, geo_info, constrain = generate_input_options(args)
@@ -283,6 +306,9 @@ if __name__ == '__main__':
     parser.add_argument('--adjust_depths', action='store_true')
     parser.add_argument('--plot_verbose', action='store_true')
     parser.add_argument('--choose_vaxis',  type=str, required=True, help="Options are 'plane' or 'slab2', chooses which depth to use as vertical coordinate for the profile.")
+    parser.add_argument('--choose_haxis',  type=str, required=True, help="Options are 'plane' or 'gc', chooses whether to use the plane horizontal coordinate or great circle distance.")
+    parser.add_argument('--extend_depth',  type=float, default=None, help="Depth to which to extend the profile. Should be None or a negative number.")
+    parser.add_argument('--topo_correct', action='store_true')
 
 
 
@@ -294,7 +320,7 @@ if __name__ == '__main__':
     
     parser.parse_known_args(namespace=args)
     
-    fname_slab = determine_slab_data(args.profile_csv, args.data_path)
+    spath, matched_slab = determine_slab_data(args.profile_csv, args.data_path)
     # fname_slab = "data/Slab2/cas_slab2_dep_02.24.18.xyz"
     # fname_slab = "data/Slab2/ker_slab2_dep_02.24.18.xyz"
     # fname_slab = "data/Slab2/ryu_slab2_dep_02.26.18.xyz"
@@ -302,9 +328,15 @@ if __name__ == '__main__':
     os.makedirs(args.output_path, exist_ok=True)
 
     print('write_msh properly input? ', args.write_msh)
+    print('Extend depth:', args.extend_depth)
 
     # uncomment to run tests
     # test_generate_mesh(fname_slab, args)
 
-    slice_generic(args.profile_csv, fname_slab, args.data_path, args.output_path, args.slab_name, args)
+    slice_generic(args.profile_csv, spath, matched_slab, args.data_path, args.output_path, args.slab_name, args)
 
+    sb18_fname = "/Users/ghobson/Documents/Steinberger_Becker_2018_Data/sb18_lthick/mean_no_slabs.l.grd"
+    df = pd.read_csv(args.slab_name+"_PATH.txt", sep=" ", header=None, names=["lon", "lat"])
+    zbc = get_zbc(sb18_fname, np.array(df["lon"])[-1], np.array(df["lat"])[-1])
+    with open("input_param_"+args.slab_name+".csv", 'a') as file:
+            file.write("z_bc "+str(np.round(zbc,0)) + " " + str(np.round(zbc,0)) + " km" + '\n')

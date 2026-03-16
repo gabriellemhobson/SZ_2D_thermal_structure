@@ -3,7 +3,9 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import RBFInterpolator
 from scipy.spatial import KDTree
 import copy as copy
+import os
 import pyproj
+import netCDF4 as nc4
 
 np.set_printoptions(legacy='1.25')
 
@@ -14,16 +16,11 @@ class Generate_Mesh:
                 outside of Slab2 data before being abbreviated. 
                 It also sets the attribute R, radius of the earth in km. 
     '''
-    def __init__(self, fname_slab, constrain):
-        self.abbrev_dist = 10.0 # km
+    def __init__(self, spath, matched_slab, constrain):
+        self.abbrev_dist = 0.05 #deg
         self.R = 6371.0
-        
-        print('Loading file', fname_slab)
-        a = np.loadtxt(fname_slab, delimiter=',')
-        af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
-
-        self.af = af        
-        self.slab_norm = self.normalize_lat_lon_data(self.af)
+        self.spath = spath
+        self.matched_slab = matched_slab
 
     def normalize_lat_lon_data(self,af):
         data = copy.deepcopy(af) # this should be unnecessary
@@ -160,7 +157,7 @@ class Generate_Mesh:
     def get_point_normal(self,profile,slab_thickness):
         df = (profile[1,:] - profile[0,:])
         dn = df[::-1]*np.array([1,-1])
-        pn = (slab_thickness/np.linalg.norm(dn))*dn
+        pn = profile[0,:] + (slab_thickness/np.linalg.norm(dn))*dn
         return pn
     
     def write_slice_to_geo(self,profile,pn,filename,geo_info,write_msh,adjust_depths):
@@ -312,7 +309,8 @@ class Generate_Mesh:
         ax.coastlines();
         ax.set_aspect('equal')
         plt.savefig(fig_name)
-        plt.show()
+        plt.close()
+        # plt.show()
 
     def convert_geographic_to_cartesian(self, geo_in):
         '''
@@ -358,14 +356,60 @@ class Generate_Mesh:
         profile_lat_lon = np.array(lonlats)
 
         if np.any(profile_lat_lon[:,0] < 0):
-            profile_lat_lon[:,0] += 360.0
+            profile_lat_lon[profile_lat_lon[:,0] < 0,0] += 360.0
 
         profile_lat_lon = np.vstack([sp, profile_lat_lon, ep])
         return profile_lat_lon
 
-    def run_generate_mesh(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,slab_thickness,plot_verbose,write_msh=False,adjust_depths=False,choose_vaxis='plane'):
+    def run_generate_mesh(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,slab_thickness,plot_verbose,write_msh=False,adjust_depths=False,choose_vaxis='plane',extend_depth=None,topo_correct=False):
 
         profile_lat_lon = self.sample_along_greatcircle(start_point_latlon, end_point_latlon)
+
+        # determine which slab is shallower
+        if len(self.matched_slab) > 1:
+            overlap = {}
+            for slab_name in self.matched_slab:
+                fname_slab = os.path.join(self.spath, slab_name)
+                print('Loading file to check which slab is shallower:', fname_slab)
+                a = np.loadtxt(fname_slab, delimiter=',')
+                af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
+                
+                slab_norm = self.normalize_lat_lon_data(af)
+                norm_profile = self.normalize_in_given_box(af, profile_lat_lon)
+                ds = self.create_RBF(slab_norm,norm_profile[:,0],norm_profile[:,1],coarse=10)
+                profile_geog = self.profile_rescale_lat_lon(af,norm_profile[:,0],norm_profile[:,1],ds) 
+                
+                # abbreviate profile where it goes beyond Slab2 data
+                tree = KDTree(af[:,0:2])
+                dist, I = tree.query(profile_geog[:,0:2])
+                if dist[0] > 0.5:
+                    pass
+                else:
+                    profile_geog = profile_geog[dist < self.abbrev_dist]
+                    overlap[fname_slab] = profile_geog[10, -1]
+            # take the shallowest one
+            print('overlap', overlap)
+            fname_slab = max(overlap, key=overlap.get)
+            print("At 10 km distance from the start of the profile,", fname_slab, "is nearby and shallower.")
+        else:
+            fname_slab = os.path.join(self.spath, self.matched_slab[0])
+        
+        if topo_correct:
+            print('Loading file with topo correction', os.path.join("Slabs_Topo_Corrected",geo_filename.split("_")[0]+"_Slab.grd"))
+            ff = nc4.Dataset(os.path.join("Slabs_Topo_Corrected",geo_filename.split("_")[0]+"_Slab.grd"), "r", format="NETCDF4")
+            lon = np.asarray(ff.variables["lon"])
+            lat = np.asarray(ff.variables["lat"])
+            z = np.asarray(ff.variables["z"])
+            LON, LAT = np.meshgrid(lon, lat)
+            a = np.vstack([LON.flatten(), LAT.flatten(), -z.flatten()]).T
+            af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
+        else:
+            print("Loading file without topo correction:", fname_slab)
+            a = np.loadtxt(fname_slab, delimiter=',')
+            af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
+        slab_norm = self.normalize_lat_lon_data(af)
+        self.af = af
+        self.slab_norm = self.normalize_lat_lon_data(self.af)
 
         # normalize those points
         norm_profile = self.normalize_in_given_box(self.af, profile_lat_lon)
@@ -376,9 +420,12 @@ class Generate_Mesh:
         profile_geog = self.profile_rescale_lat_lon(self.af,norm_profile[:,0],norm_profile[:,1],ds) 
 
         # abbreviate profile where it goes beyond Slab2 data
-        tree = KDTree(self.af)
-        dist, I = tree.query(profile_geog)
+        tree = KDTree(self.af[:,0:2])
+        dist, I = tree.query(profile_geog[:,0:2])
         profile_geog = profile_geog[dist < self.abbrev_dist]
+        
+        # save geog profile to file
+        np.savetxt(geo_filename.split("_")[0]+"_Path.txt", profile_geog[:,0:2])
         
         # convert to xyz
         profile_xyz = self.convert_geographic_to_cartesian(profile_geog)
@@ -416,8 +463,8 @@ class Generate_Mesh:
         profile_slab2 = np.vstack([shifted[:,0], profile_geog[:,-1]]).T
         if choose_vaxis == 'slab2':
             self.vertical_shift = profile_slab2[0,1]
-        profile_slab2[:,1] -= profile_slab2[0,1]
         
+        profile_slab2[:,1] -= profile_slab2[0,1]
 
         surface, surface_ll = self.run_surface(start_point_latlon, end_point_latlon, self.af)
         print('Max depth of surface', np.min(surface[:,1]))
@@ -434,6 +481,7 @@ class Generate_Mesh:
         plt.xlabel("x' (km)")
         plt.ylabel("y' (km)")
         plt.savefig("profile_with_surface.png", dpi=600)
+        plt.close()
         # plt.show()
 
         # choose which coordinates to use
@@ -444,11 +492,180 @@ class Generate_Mesh:
         else:
             raise ValueError('Argument choose_vaxis must be "slab2" or "plane". ')
 
+        if extend_depth is not None and extend_depth < profile[-1,1]:
+            # extend profile to arbitrary depth
+            print('Extending profile from depth', profile[-1,1], 'to depth', extend_depth)
+            y_arr = np.linspace(profile[-1,1], extend_depth, int(np.abs(extend_depth-profile[-1,1])))
+            # fit line through lower 10 km
+            I = np.argmin(np.abs(profile[:,1] - profile[-1,1] - 10))
+            pfit = np.polyfit(profile[I:,1], profile[I:,0], 1)
+            x_arr = np.polyval(pfit, y_arr)
+
+            # check if slope of line is different from slope of last segment (kink)
+            last = np.polyfit(profile[-2:,1], profile[-2:,0], 1)
+            diff_intercept = np.abs(pfit[1] - last[1])
+            diff_angle = np.abs(np.rad2deg(np.arctan(pfit[0])) - np.rad2deg(np.arctan(last[0])) )
+            if (diff_angle < 5) & (diff_intercept < 10.0):
+                # if similar, extend straightforwardly
+                profile = np.vstack([profile, np.vstack([x_arr, y_arr]).T])
+            else: 
+                # if different, blend lines to remove kink
+                extend_x = np.polyval(last, y_arr)
+                d_x = x_arr - extend_x
+                blend = np.linspace(0.0, 1.0, int(y_arr.shape[0]/2))
+                blend = np.hstack([blend, np.ones(y_arr.shape[0]-blend.shape[0])])
+                blend_x = extend_x + blend*d_x
+                profile = np.vstack([profile, np.vstack([blend_x, y_arr]).T])
+
         pn = self.get_point_normal(profile,slab_thickness)
         self.write_slice_to_geo(profile,pn,geo_filename,geo_info,write_msh=write_msh,adjust_depths=adjust_depths)
 
         return profile, profile_lat_lon
-    
+
+    def run_generate_mesh_gcdist(self,geo_filename,geo_info,start_point_latlon,end_point_latlon,slab_thickness,plot_verbose,write_msh=False,adjust_depths=False,choose_vaxis='slab2',extend_depth=None,topo_correct=False):
+
+        if choose_vaxis == "plane":
+            raise ValueError('Using run_generate_mesh_gcdist with choose_vaxis=plane does not work. It must use choose_vaxis=slab2')
+
+        profile_lat_lon = self.sample_along_greatcircle(start_point_latlon, end_point_latlon)
+
+        # determine which slab is shallower
+        if len(self.matched_slab) > 1:
+            overlap = {}
+            for slab_name in self.matched_slab:
+                fname_slab = os.path.join(self.spath, slab_name)
+                print('Loading file to check which slab is shallower:', fname_slab)
+                a = np.loadtxt(fname_slab, delimiter=',')
+                af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
+                
+                slab_norm = self.normalize_lat_lon_data(af)
+                norm_profile = self.normalize_in_given_box(af, profile_lat_lon)
+                ds = self.create_RBF(slab_norm,norm_profile[:,0],norm_profile[:,1],coarse=10)
+                profile_geog = self.profile_rescale_lat_lon(af,norm_profile[:,0],norm_profile[:,1],ds) 
+                
+                # abbreviate profile where it goes beyond Slab2 data
+                tree = KDTree(af[:,0:2])
+                dist, I = tree.query(profile_geog[:,0:2])
+                if dist[0] > 0.5:
+                    pass
+                else:
+                    profile_geog = profile_geog[dist < self.abbrev_dist]
+                    overlap[fname_slab] = profile_geog[10, -1]
+            # take the shallowest one
+            print('overlap', overlap)
+            fname_slab = max(overlap, key=overlap.get)
+            print("At 10 km distance from the start of the profile,", fname_slab, "is nearby and shallower.")
+        else:
+            fname_slab = os.path.join(self.spath, self.matched_slab[0])
+
+        # profile_lat_lon = self.sample_along_greatcircle(start_point_latlon, end_point_latlon)
+        sp = start_point_latlon
+        ep = end_point_latlon
+        g = pyproj.Geod(ellps='sphere')
+        # (az12, az21, dist_gc) = g.inv(sp[0], sp[1], ep[0], ep[1])
+        # lonlats = g.npts(sp[0], sp[1], ep[0], ep[1], 1 + int(dist_gc / 1000))
+        # profile_lat_lon = np.array(lonlats)
+
+        # if np.any(profile_lat_lon[:,0] < 0):
+        #     profile_lat_lon[profile_lat_lon[:,0] < 0,0] += 360.0
+
+        # profile_lat_lon = np.vstack([sp, profile_lat_lon, ep])
+
+        # fname_slab = os.path.join(self.spath, self.matched_slab[0])
+
+        if topo_correct:
+            print('Loading file with topo correction', os.path.join("Slabs_Topo_Corrected",geo_filename.split("_")[0]+"_Slab.grd"))
+            ff = nc4.Dataset(os.path.join("Slabs_Topo_Corrected",geo_filename.split("_")[0]+"_Slab.grd"), "r", format="NETCDF4")
+            lon = np.asarray(ff.variables["lon"])
+            lat = np.asarray(ff.variables["lat"])
+            z = np.asarray(ff.variables["z"])
+            LON, LAT = np.meshgrid(lon, lat)
+            a = np.vstack([LON.flatten(), LAT.flatten(), -z.flatten()]).T
+            af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
+        else:
+            print("Loading file without topo correction:", fname_slab)
+            a = np.loadtxt(fname_slab, delimiter=',')
+            af = a[~np.isnan(a).any(axis=1), :] # lon lat depth
+
+        # slab_norm = self.normalize_lat_lon_data(af)
+        self.af = af
+        self.slab_norm = self.normalize_lat_lon_data(self.af)
+
+        # normalize those points
+        norm_profile = self.normalize_in_given_box(self.af, profile_lat_lon)
+
+        # evaluate RBF along those points
+        ds = self.create_RBF(self.slab_norm,norm_profile[:,0],norm_profile[:,1],coarse=10)
+
+        profile_geog = self.profile_rescale_lat_lon(self.af,norm_profile[:,0],norm_profile[:,1],ds) 
+
+        # abbreviate profile where it goes beyond Slab2 data
+        tree = KDTree(self.af[:,0:2])
+        dist, I = tree.query(profile_geog[:,0:2])
+        profile_geog = profile_geog[dist < self.abbrev_dist]
+
+        # breakpoint()
+        distances = np.zeros(profile_geog.shape[0])
+        for k in range(profile_geog.shape[0]):
+            (az12, az21, dist_gc) = g.inv(sp[0], sp[1], profile_geog[k,0], profile_geog[k,1])
+            distances[k] = dist_gc/1e3
+        # breakpoint()
+        profile = np.vstack([distances, profile_geog[:,-1]]).T
+
+        if extend_depth is not None and extend_depth < profile[-1,1]:
+            # extend profile to arbitrary depth
+            print('Extending profile from depth', profile[-1,1], 'to depth', extend_depth)
+            y_arr = np.linspace(profile[-1,1], extend_depth, int(np.abs(extend_depth-profile[-1,1])))
+            # fit line through lower 10 km
+            I = np.argmin(np.abs(profile[:,1] - profile[-1,1] - 10))
+            pfit = np.polyfit(profile[I:,1], profile[I:,0], 1)
+            x_arr = np.polyval(pfit, y_arr)
+
+            # check if slope of line is different from slope of last segment (kink)
+            last = np.polyfit(profile[-2:,1], profile[-2:,0], 1)
+            diff_intercept = np.abs(pfit[1] - last[1])
+            diff_angle = np.abs(np.rad2deg(np.arctan(pfit[0])) - np.rad2deg(np.arctan(last[0])) )
+            if (diff_angle < 5) & (diff_intercept < 10.0):
+                # if similar, extend straightforwardly
+                profile = np.vstack([profile, np.vstack([x_arr, y_arr]).T])
+            else: 
+                # if different, blend lines to remove kink
+                extend_x = np.polyval(last, y_arr)
+                d_x = x_arr - extend_x
+                blend = np.linspace(0.0, 1.0, int(y_arr.shape[0]/2))
+                blend = np.hstack([blend, np.ones(y_arr.shape[0]-blend.shape[0])])
+                blend_x = extend_x + blend*d_x
+                profile = np.vstack([profile, np.vstack([blend_x, y_arr]).T])
+
+        # vertical shift
+        profile[:,-1] -= profile[0,-1] # vertical shift
+        self.vertical_shift = profile[0,-1]
+
+        # horizontal shift
+        profile[:,0] -= profile[0,0]
+
+        pn = self.get_point_normal(profile,slab_thickness)
+        self.write_slice_to_geo(profile,pn,geo_filename,geo_info,write_msh=write_msh,adjust_depths=adjust_depths)
+
+        surface, surface_ll = self.run_surface(start_point_latlon, end_point_latlon, self.af)
+        print('Max depth of surface', np.min(surface[:,1]))
+
+        fig = plt.figure(figsize=(6,6))
+        ax = fig.add_subplot(111)
+        # ax.plot(profile_plane[:,0], profile_plane[:,1], label='Plane', lw=2)
+        ax.plot(profile[:,0], profile[:,-1], label='Slab2', lw=2, linestyle='dashed')
+        ax.axhline(0.0, color='lightgray')
+        ax.plot(surface[:,0], surface[:,1], color='green', label='Surface')
+        ax.set_aspect('equal')
+        plt.legend(fontsize=18)
+        plt.grid(visible=True, which='major')
+        plt.xlabel("x' (km)")
+        plt.ylabel("y' (km)")
+        plt.savefig("profile_with_surface.png", dpi=600)
+        plt.close()
+
+        return profile, profile_lat_lon
+
     def run_surface(self, start_point_latlon, end_point_latlon, box):
 
         profile_lat_lon = self.sample_along_greatcircle(start_point_latlon, end_point_latlon)
