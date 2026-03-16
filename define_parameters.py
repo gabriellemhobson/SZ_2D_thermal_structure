@@ -67,8 +67,8 @@ class Parameters():
         self.n_picard_it = n_picard_it
         self.n_iters = n_iters
         self.diff_tol = diff_tol
-        self.dt = 100000 * (365*24*60*60) / self.Tstar # 100,000 yrs nondimensionalized, only used when pde_solver_time_dep.py is used 
-        self.n_ts = 180
+        self.dt = 100000 # 100,000 yrs (nondimensionalized later), only used when pde_solver_time_dep.py is used 
+        self.n_ts = 180 # number of timesteps, only used when pde_solver_time_dep.py is used 
 
     def order_param_dict(self):
         from collections import OrderedDict
@@ -152,6 +152,12 @@ class Parameters():
         if 'mu' in ks:
             self.mu = kwargs['mu']
             check_updated['mu'] = True
+        if 'dt' in ks:
+            self.dt = kwargs['dt'] * (365*24*60*60) / self.Tstar
+            check_updated['dt'] = True
+        if 'n_ts' in ks:
+            self.n_ts = kwargs['n_ts']
+            check_updated['n_ts'] = True
         if all(check_updated.values()):
             print('All parameter values have been updated.')
         else:

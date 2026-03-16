@@ -24,7 +24,7 @@ major_minor, patch = ver[0] + '.' + ver[1], ver[2]
 if (major_minor == "3.12"): # docker version
     # print('Using PETSc version', str(major_minor),'.')
     pass
-elif (major_minor == "3.14") or (major_minor == "3.17"): # conda env version
+else: # conda env version
     # print('Using PETSc version', str(major_minor),'.')
     PETScOptions.set("log_view", "")
     PETScOptions.set("info","true")
@@ -32,9 +32,12 @@ elif (major_minor == "3.14") or (major_minor == "3.17"): # conda env version
     PETScOptions.set("pc_factor_mat_solver_type","umfpack")
     PETScOptions.set("pc_factor_mat_ordering_type","external")
     PETScOptions.set("ksp_type","preonly")
+
+if (major_minor == "3.12") or (major_minor == "3.14") or (major_minor == "3.17") or (major_minor == "3.22"):
+    print('Using PETSc version', str(major_minor),'.')
 else:
-    print("This code is not compatible with versions of PETSc other than 3.12, 3.14, and 3.17. Exiting.")
-    exit()
+    print('Warning: only PETSc versions 3.12, 3.14, 3.17 and 3.22 have been tested. Using a different PETSc version may cause errors or unexpected behavior.')
+
 
 class PDE_Solver():
     def __init__(self,meshfile_name,vizfile_name,dfield_fname,slab_d_fname,indices_fname,**kwargs):
@@ -107,7 +110,7 @@ class PDE_Solver():
     def project_gmh(self, v, V, bcs=None, mesh=None,function=None):
         if (major_minor == "3.12"):
             function = project(v,V)
-        elif (major_minor == "3.14") or (major_minor == "3.17"):
+        else:
             import ufl
             __all__ = ['project']
             # Ensure we have a mesh and attach to measure
@@ -226,7 +229,7 @@ class PDE_Solver():
             # print('Starting slab Stokes solve')
             solve(a == L, U)
             # print('Finishing slab Stokes solve')
-        elif (major_minor == "3.14") or (major_minor == "3.17"):
+        else:
             A = assemble(a)
             b = assemble(L)
             solver = PETScKrylovSolver()
@@ -387,7 +390,7 @@ class PDE_Solver():
             # print('Starting wedge Stokes solve.')
             solve(a_wedge == L_wedge, U_new, collect_bc)
             # print('Finished wedge Stokes solve.')
-        elif (major_minor == "3.14") or (major_minor == "3.17"):
+        else:
             A = assemble(a_wedge)
             b = assemble(L_wedge)
             for bc in collect_bc:
@@ -559,7 +562,7 @@ class PDE_Solver():
             # print('Starting energy equation solve.')
             solve( a_T == L_T, T_i, Tbcs)
             # print('Finished with energy equation solve.')
-        elif (major_minor == "3.14") or (major_minor == "3.17"):
+        else:
             # A,b = assemble_system(a_T,L_T,Tbcs) # DOES NOT WORK
             A = assemble(a_T)
             b = assemble(L_T)
@@ -758,7 +761,7 @@ class PDE_Solver():
         u_n,_ = Function(self.W_u_p).split()
         u_n.vector()[:] = u_0.vector()[:]
         
-        for ts in range((self.param.n_ts)):
+        for ts in range(int(self.param.n_ts)):
             print('timestep ', ts)
 
             if self.param.viscosity_type == 'isoviscous':
